@@ -44,6 +44,11 @@ RUN addgroup --system --gid 1001 nodejs \
   && adduser --system --uid 1001 selecon
 
 COPY --from=builder --chown=selecon:nodejs /app/deploy ./
+# `prisma migrate deploy` (rodado como task avulsa — ver
+# apps/api/src/scripts/run-migrations.ts) precisa do schema.prisma + migrations/ em um
+# caminho previsível; copiado explicitamente do estágio builder em vez de depender do
+# que `pnpm deploy --prod` decide empacotar por padrão.
+COPY --from=builder --chown=selecon:nodejs /app/packages/db/prisma ./packages/db/prisma
 
 USER selecon
 EXPOSE 3001

@@ -4,14 +4,14 @@ version: 0.2
 # que o deploy funcionou de ponta a ponta — falha o pipeline se qualquer verificação
 # falhar. Nunca executado neste sandbox (sem URL AWS acessível a partir daqui).
 
-env:
-  variables:
-    ALB_URL: "http://selecon-portal-dev-alb-1790035663.us-east-1.elb.amazonaws.com"
-
 phases:
   build:
     commands:
       - set -euo pipefail
+      - |
+        ALB_DNS=$(aws elbv2 describe-load-balancers --names "selecon-portal-dev-alb" \
+          --query 'LoadBalancers[0].DNSName' --output text)
+        export ALB_URL="http://$ALB_DNS"
       - echo "Home"
       - curl -sf -o /dev/null -w "%{http_code}\n" "$ALB_URL/" | grep -q "^200$"
       - echo "API health/live"

@@ -138,9 +138,11 @@ confirm "Prosseguir com 'cdk deploy SeleconPortalPipelineStack'?"
 
 PIPELINE_NAME="$(aws cloudformation describe-stacks --stack-name SeleconPortalPipelineStack --query "Stacks[0].Outputs[?OutputKey=='PipelineName'].OutputValue | [0]" --output text 2>/dev/null || echo "selecon-portal-dev")"
 
+ALB_DNS="$(aws elbv2 describe-load-balancers --names "$ALB_NAME" --query 'LoadBalancers[0].DNSName' --output text)"
+
 log "Ativação concluída"
 echo "Pipeline: $PIPELINE_NAME"
-echo "URL do portal: http://selecon-portal-dev-alb-1790035663.us-east-1.elb.amazonaws.com"
+echo "URL do portal: http://$ALB_DNS"
 echo
 echo "Próximos passos:"
 echo "  - Qualquer push em feat/fase-1-design-system agora dispara o pipeline automaticamente."

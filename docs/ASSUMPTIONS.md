@@ -82,3 +82,27 @@ tempo logo após estabilizar a suíte E2E, teria alto risco de regressão sem be
 apenas cosmético. Os novos componentes ficam disponíveis, tipados, com lint/typecheck/build
 verificados, prontos para adoção incremental em código novo ou em uma fase futura dedicada a essa
 migração.
+
+## 10. `buildspec-migrations.yml` (estágio Migrations do pipeline) tem um bug conhecido, não corrigido nesta rodada
+
+Ao preparar a ativação manual do ambiente DEV (`scripts/build-push-deploy-dev.sh`), foram
+encontrados e corrigidos bugs reais que impediam qualquer execução de `prisma migrate deploy`
+em produção: `prisma` (a CLI) estava em `devDependencies` de `packages/db` (removida da imagem
+de produção por `pnpm deploy --prod`), e o pacote `pg` (usado só no `buildspec-migrations.yml`
+para o advisory lock) nunca foi uma dependência do projeto. Corrigido em
+`apps/api/src/scripts/run-migrations.ts` (usa o Prisma Client já existente via `$queryRawUnsafe`
+para o lock, sem depender de `pg`) + `prisma` movida para `dependencies`.
+
+`scripts/build-push-deploy-dev.sh` já usa a versão corrigida via `aws ecs run-task` (a única
+forma de alcançar o RDS, que é privado à VPC — nem CloudShell nem os projetos CodeBuild do
+pipeline, que não têm `vpcConfig`, conseguem se conectar diretamente a ele).
+
+**Pendência real:** `buildspec-migrations.yml` (usado pelo estágio Migrations de
+`SeleconPortalPipelineStack`, que não foi tocado nesta rodada — só `SeleconPortalDevStack` foi
+ativada) ainda tem a versão antiga e quebrada (tenta `docker run` local com `pg` inexistente, e
+o `MigrationsProject` do CodeBuild não tem `vpcConfig` nem permissão IAM para `ecs:RunTask`).
+Antes de ativar `SeleconPortalPipelineStack`, `buildspec-migrations.yml` e
+`infrastructure/cdk/lib/pipeline-stack.ts` precisam do mesmo tratamento: substituir o
+`docker run` por `aws ecs run-task` usando a task definition da api (mesmas subnets/security
+groups do serviço), com as permissões IAM (`ecs:RunTask`, `ecs:DescribeTasks`, `iam:PassRole`)
+adicionadas ao papel do `MigrationsProject`.

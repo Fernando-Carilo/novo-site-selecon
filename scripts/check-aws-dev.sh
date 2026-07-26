@@ -101,9 +101,16 @@ else
 fi
 
 section "URL pública"
-ALB_URL="http://selecon-portal-dev-alb-1790035663.us-east-1.elb.amazonaws.com"
-HTTP_CODE="$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "$ALB_URL/" 2>/dev/null || echo "000")"
-[[ "$HTTP_CODE" == "200" ]] && pass "$ALB_URL — HTTP $HTTP_CODE" || fail "$ALB_URL — HTTP $HTTP_CODE"
+ALB_DNS="$(aws elbv2 describe-load-balancers --names "$ALB_NAME" --query 'LoadBalancers[0].DNSName' --output text 2>/dev/null)"
+if [[ -n "$ALB_DNS" && "$ALB_DNS" != "None" ]]; then
+  ALB_URL="http://$ALB_DNS"
+  HTTP_CODE="$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "$ALB_URL/" 2>/dev/null || echo "000")"
+  API_HTTP_CODE="$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "$ALB_URL/api/health/ready" 2>/dev/null || echo "000")"
+  [[ "$HTTP_CODE" == "200" ]] && pass "$ALB_URL/ — HTTP $HTTP_CODE" || fail "$ALB_URL/ — HTTP $HTTP_CODE"
+  [[ "$API_HTTP_CODE" == "200" ]] && pass "$ALB_URL/api/health/ready — HTTP $API_HTTP_CODE" || fail "$ALB_URL/api/health/ready — HTTP $API_HTTP_CODE"
+else
+  fail "Não foi possível obter o DNS do ALB $ALB_NAME"
+fi
 
 section "Resumo"
 if [[ "$FAILED" == "0" ]]; then

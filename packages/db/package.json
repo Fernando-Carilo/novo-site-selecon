@@ -25,14 +25,14 @@
     "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
-    "@prisma/client": "^6.2.1"
+    "@prisma/client": "^6.2.1",
+    "prisma": "^6.2.1"
   },
   "devDependencies": {
     "@selecon/auth": "workspace:*",
     "@selecon/config": "workspace:*",
     "@types/node": "^22.10.5",
     "eslint": "^9.18.0",
-    "prisma": "^6.2.1",
     "tsx": "^4.19.2",
     "typescript": "^5.7.3",
     "vitest": "^2.1.8"
