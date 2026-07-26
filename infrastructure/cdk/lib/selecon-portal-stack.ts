@@ -56,16 +56,8 @@ export class SeleconPortalStack extends cdk.Stack {
       securityGroups: [],
     });
 
-    const webRepo = ecr.Repository.fromRepositoryName(
-      this,
-      "WebRepo",
-      config.ecrRepositories.web,
-    );
-    const apiRepo = ecr.Repository.fromRepositoryName(
-      this,
-      "ApiRepo",
-      config.ecrRepositories.api,
-    );
+    const webRepo = ecr.Repository.fromRepositoryName(this, "WebRepo", config.ecrRepositories.web);
+    const apiRepo = ecr.Repository.fromRepositoryName(this, "ApiRepo", config.ecrRepositories.api);
     const workerRepo = ecr.Repository.fromRepositoryName(
       this,
       "WorkerRepo",
@@ -147,7 +139,10 @@ export class SeleconPortalStack extends cdk.Stack {
       encryption: s3.BucketEncryption.S3_MANAGED,
       versioned: true,
       lifecycleRules: [
-        { id: "abort-incomplete-uploads", abortIncompleteMultipartUploadAfter: cdk.Duration.days(7) },
+        {
+          id: "abort-incomplete-uploads",
+          abortIncompleteMultipartUploadAfter: cdk.Duration.days(7),
+        },
       ],
       cors: [
         {

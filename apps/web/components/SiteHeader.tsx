@@ -7,7 +7,7 @@ const NAV_ITEMS = [
   { href: "/noticias", label: "Notícias" },
   { href: "/atendimento", label: "Atendimento" },
   { href: "/denuncias", label: "Integridade" },
-  { href: "/candidato", label: "Área do candidato" },
+  { href: "/area-do-candidato", label: "Área do candidato" },
 ];
 
 /**

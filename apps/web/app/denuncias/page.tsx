@@ -18,7 +18,7 @@ export default function WhistleblowingPage() {
         <Link href="/denuncias/nova" className={buttonClassNames("primary")}>
           Registrar denúncia
         </Link>
-        <Link href="/denuncias/consulta" className={buttonClassNames("secondary")}>
+        <Link href="/denuncias/consultar" className={buttonClassNames("secondary")}>
           Consultar denúncia
         </Link>
       </div>

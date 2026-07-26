@@ -4,7 +4,7 @@ import { AdSlot } from "@/components/AdSlot";
 
 const SHORTCUTS = [
   { href: "/concursos", label: "Encontrar concurso" },
-  { href: "/candidato", label: "Área do candidato" },
+  { href: "/area-do-candidato", label: "Área do candidato" },
   { href: "/denuncias", label: "Canal de denúncias" },
   { href: "/atendimento", label: "Atendimento" },
 ];

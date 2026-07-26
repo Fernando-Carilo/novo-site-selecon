@@ -283,6 +283,43 @@ async function main() {
     },
   });
 
+  // --- Páginas institucionais obrigatórias (schema "content") — publicadas por padrão ---
+  const contentAdminUser = userByEmail.get("conteudo.demo@selecon.example")!;
+  const institutionalPages: { slug: string; title: string; body: string }[] = [
+    {
+      slug: "sobre",
+      title: "Sobre o Instituto Selecon",
+      body: "Conteúdo institucional fictício de demonstração sobre o Instituto Selecon.",
+    },
+    {
+      slug: "politica-de-privacidade",
+      title: "Política de Privacidade",
+      body: "Conteúdo fictício de demonstração da política de privacidade do Portal Selecon.",
+    },
+    {
+      slug: "termos-de-uso",
+      title: "Termos de Uso",
+      body: "Conteúdo fictício de demonstração dos termos de uso do Portal Selecon.",
+    },
+  ];
+  for (const spec of institutionalPages) {
+    const page = await prisma.contentPage.upsert({
+      where: { slug: spec.slug },
+      update: {},
+      create: {
+        slug: spec.slug,
+        title: spec.title,
+        status: "PUBLISHED",
+        createdByUserId: contentAdminUser.id,
+        publishedAt: new Date(),
+        revisions: {
+          create: { body: { text: spec.body }, authorUserId: contentAdminUser.id },
+        },
+      },
+    });
+    void page;
+  }
+
   // --- Feature flags ---
   await prisma.featureFlag.upsert({
     where: { key: "candidate-gateway-mock" },

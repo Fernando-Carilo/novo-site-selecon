@@ -13,7 +13,7 @@ export default function ServicePage() {
         <Link href="/atendimento/novo" className={buttonClassNames("primary")}>
           Abrir solicitação
         </Link>
-        <Link href="/atendimento/consulta" className={buttonClassNames("secondary")}>
+        <Link href="/atendimento/consultar" className={buttonClassNames("secondary")}>
           Consultar protocolo
         </Link>
       </div>

@@ -9,7 +9,8 @@ const app = new cdk.App();
 new SeleconPortalStack(app, "SeleconPortalDevStack", {
   env: devConfig.env,
   config: devConfig,
-  description: "Recursos novos do Portal Selecon (DEV): RDS, Redis/Valkey, S3, Secrets, ECS api/worker",
+  description:
+    "Recursos novos do Portal Selecon (DEV): RDS, Redis/Valkey, S3, Secrets, ECS api/worker",
 });
 
 /**
