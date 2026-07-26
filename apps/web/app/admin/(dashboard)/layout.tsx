@@ -43,7 +43,13 @@ export default async function AdminDashboardLayout({ children }: { children: Rea
           </ul>
         </nav>
       </aside>
-      <div className="flex-1">
+      {/* min-w-0: sem isso, um item flex recusa encolher abaixo da largura
+          intrínseca do seu conteúdo — a tabela com overflow-x-auto interna
+          (min-w-[820px]) forçava a PÁGINA INTEIRA a ficar larga no mobile em
+          vez de rolar só internamente, empurrando o cabeçalho da página para
+          fora da viewport (bug real encontrado pela suíte E2E em
+          mobile-chromium). */}
+      <div className="min-w-0 flex-1">
         <header className="border-border bg-navy-primary md:bg-surface relative flex items-center justify-between border-b px-4 py-3 md:px-6 md:py-4">
           <div className="flex items-center gap-3">
             <AdminMobileNav items={NAV_ITEMS} />
