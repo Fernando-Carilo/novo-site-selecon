@@ -22,6 +22,7 @@ const ROLES = [
   { key: "INTEGRITY_ADMIN", description: "Administrador do canal de integridade/denúncias" },
   { key: "INTEGRITY_ANALYST", description: "Analista de integridade" },
   { key: "ADVERTISING_ADMIN", description: "Administrador de anúncios e campanhas" },
+  { key: "ADVERTISING_REVIEWER", description: "Revisor de conteúdo/marca de campanhas" },
   { key: "AUDITOR", description: "Auditor (somente leitura da trilha de auditoria)" },
   { key: "READ_ONLY", description: "Consulta (somente leitura)" },
 ] as const;
@@ -72,6 +73,11 @@ const SEED_USERS: SeedUserSpec[] = [
     email: "comercial.demo@selecon.example",
     displayName: "Administrador Comercial Demo",
     roleKey: "ADVERTISING_ADMIN",
+  },
+  {
+    email: "comercial.revisor.demo@selecon.example",
+    displayName: "Revisor Comercial Demo",
+    roleKey: "ADVERTISING_REVIEWER",
   },
   { email: "auditor.demo@selecon.example", displayName: "Auditor Demo", roleKey: "AUDITOR" },
   {
@@ -219,6 +225,61 @@ async function main() {
           codeHash: "seed-fake-hash-do-not-use-in-production",
         },
       },
+    },
+  });
+
+  // --- Anúncios (schema "advertising") — totalmente fictício ---
+  const homeSidebarPlacement = await prisma.placement.upsert({
+    where: { key: "HOME_SIDEBAR" },
+    update: {},
+    create: { key: "HOME_SIDEBAR", name: "Barra lateral da home", page: "home" },
+  });
+
+  const advertiser = await prisma.advertiser.upsert({
+    where: { id: "00000000-0000-0000-0000-000000000003" },
+    update: {},
+    create: {
+      id: "00000000-0000-0000-0000-000000000003",
+      legalName: "Anunciante Fictício de Demonstração Ltda.",
+    },
+  });
+
+  const campaignAdminUser = userByEmail.get("comercial.demo@selecon.example")!;
+  const demoCampaign = await prisma.campaign.upsert({
+    where: { id: "00000000-0000-0000-0000-000000000004" },
+    update: {},
+    create: {
+      id: "00000000-0000-0000-0000-000000000004",
+      advertiserId: advertiser.id,
+      name: "Campanha fictícia de demonstração",
+      status: "APPROVED",
+      createdByUserId: campaignAdminUser.id,
+      schedule: {
+        create: {
+          startsAt: new Date(Date.now() - 24 * 60 * 60 * 1000),
+          endsAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        },
+      },
+      campaignPlacements: { create: { placementId: homeSidebarPlacement.id } },
+      creatives: {
+        create: {
+          format: "DESKTOP",
+          objectKey: "demo/creative-fictício.png",
+          destinationUrl: "https://example.com/anuncio-ficticio-demo",
+          approved: true,
+        },
+      },
+    },
+  });
+  await prisma.campaignApproval.upsert({
+    where: { campaignId: demoCampaign.id },
+    update: {},
+    create: {
+      campaignId: demoCampaign.id,
+      reviewerUserId: campaignAdminUser.id,
+      complianceUserId: campaignAdminUser.id,
+      approved: true,
+      decidedAt: new Date(),
     },
   });
 

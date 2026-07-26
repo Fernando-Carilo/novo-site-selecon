@@ -1,6 +1,7 @@
 import { Module } from "@nestjs/common";
 import { APP_GUARD } from "@nestjs/core";
 import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler";
+import { AdvertisingModule } from "./advertising/advertising.module.js";
 import { AuditModule } from "./audit/audit.module.js";
 import { AuthModule } from "./auth/auth.module.js";
 import { ContestsModule } from "./contests/contests.module.js";
@@ -19,6 +20,7 @@ import { WhistleblowingModule } from "./whistleblowing/whistleblowing.module.js"
     ContestsModule,
     TicketsModule,
     WhistleblowingModule,
+    AdvertisingModule,
     IntegrationsModule,
     HealthModule,
   ],

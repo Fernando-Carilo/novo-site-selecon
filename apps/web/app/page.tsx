@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { buttonClassNames } from "@selecon/ui";
+import { AdSlot } from "@/components/AdSlot";
 
 const SHORTCUTS = [
   { href: "/concursos", label: "Encontrar concurso" },
@@ -36,6 +37,10 @@ export default function HomePage() {
           </li>
         ))}
       </ul>
+
+      <div className="mt-12 max-w-sm">
+        <AdSlot placementKey="HOME_SIDEBAR" />
+      </div>
     </section>
   );
 }
