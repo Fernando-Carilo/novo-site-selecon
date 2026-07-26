@@ -116,9 +116,9 @@ ok "Três repositórios ECR confirmados"
 # ============================================================================
 log "3/13 — Espaço em disco"
 AVAILABLE_KB="$(df --output=avail "$REPO_ROOT" | tail -1 | tr -d ' ')"
-AVAILABLE_GB=$((AVAILABLE_KB / 1024 / 1024))
-echo "Disponível em $REPO_ROOT: ${AVAILABLE_GB}GiB"
-[[ "$AVAILABLE_GB" -ge 5 ]] || fail "Menos de 5GiB livres — builds Docker provavelmente falharão por falta de espaço. Rode 'docker system prune -af' e libere espaço antes de continuar."
+AVAILABLE_MB=$((AVAILABLE_KB / 1024))
+echo "Disponível em $REPO_ROOT: ${AVAILABLE_MB}MiB"
+[[ "$AVAILABLE_MB" -ge 500 ]] || fail "Menos de 500MiB livres — builds Docker provavelmente falharão por falta de espaço. Rode 'docker system prune -af' e libere espaço antes de continuar."
 ok "Espaço suficiente"
 
 # ============================================================================
