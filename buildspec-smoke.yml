@@ -1,0 +1,37 @@
+version: 0.2
+
+# Estágio SmokeTest do pipeline (seção 15/21/26). Valida, pela URL pública real do ALB,
+# que o deploy funcionou de ponta a ponta — falha o pipeline se qualquer verificação
+# falhar. Nunca executado neste sandbox (sem URL AWS acessível a partir daqui).
+
+env:
+  variables:
+    ALB_URL: "http://selecon-portal-dev-alb-1790035663.us-east-1.elb.amazonaws.com"
+
+phases:
+  build:
+    commands:
+      - set -euo pipefail
+      - echo "Home"
+      - curl -sf -o /dev/null -w "%{http_code}\n" "$ALB_URL/" | grep -q "^200$"
+      - echo "API health/live"
+      - curl -sf "$ALB_URL/api/health/live" | grep -q '"status"'
+      - echo "API health/ready (Postgres + Redis)"
+      - curl -sf "$ALB_URL/api/health/ready" | grep -q '"status"'
+      - echo "Swagger"
+      - curl -sf -o /dev/null -w "%{http_code}\n" "$ALB_URL/api/docs" | grep -q "^200$"
+      - echo "Listagem pública de concursos"
+      - curl -sf "$ALB_URL/api/public/contests" | grep -q "^\["
+      - echo "Página de login administrativo"
+      - curl -sf -o /dev/null -w "%{http_code}\n" "$ALB_URL/admin/login" | grep -q "^200$"
+      - |
+        echo "Serviços ECS em steady state"
+        aws ecs describe-services --cluster "$ECS_CLUSTER_NAME" \
+          --services selecon-portal-dev-web selecon-portal-dev-api selecon-portal-dev-worker \
+          --query 'services[].{name:serviceName,desired:desiredCount,running:runningCount}' \
+          --output table
+      - |
+        echo "Target groups saudáveis"
+        aws elbv2 describe-target-health --target-group-arn "$WEB_TARGET_GROUP_ARN" --output table || true
+        aws elbv2 describe-target-health --target-group-arn "$API_TARGET_GROUP_ARN" --output table || true
+      - echo "Smoke test concluído com sucesso."

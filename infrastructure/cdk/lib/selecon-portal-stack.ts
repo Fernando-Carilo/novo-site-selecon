@@ -1,4 +1,6 @@
 import * as cdk from "aws-cdk-lib";
+import * as cloudwatch from "aws-cdk-lib/aws-cloudwatch";
+import * as cloudwatch_actions from "aws-cdk-lib/aws-cloudwatch-actions";
 import * as ec2 from "aws-cdk-lib/aws-ec2";
 import * as ecs from "aws-cdk-lib/aws-ecs";
 import * as elbv2 from "aws-cdk-lib/aws-elasticloadbalancingv2";
@@ -7,6 +9,8 @@ import * as rds from "aws-cdk-lib/aws-rds";
 import * as elasticache from "aws-cdk-lib/aws-elasticache";
 import * as s3 from "aws-cdk-lib/aws-s3";
 import * as secretsmanager from "aws-cdk-lib/aws-secretsmanager";
+import * as sns from "aws-cdk-lib/aws-sns";
+import * as subscriptions from "aws-cdk-lib/aws-sns-subscriptions";
 import * as logs from "aws-cdk-lib/aws-logs";
 import * as iam from "aws-cdk-lib/aws-iam";
 import { Construct } from "constructs";
@@ -282,6 +286,9 @@ export class SeleconPortalStack extends cdk.Stack {
       securityGroups: [webTaskSecurityGroup],
       assignPublicIp: true, // subnets públicas nesta fase DEV (ver nota do RDS acima)
       serviceName: "selecon-portal-dev-api",
+      // Rollback automático (seção 17) — se a nova revisão da task não atingir o
+      // steady state, o ECS reverte para a revisão anterior sozinho.
+      circuitBreaker: { enable: true, rollback: true },
     });
 
     const workerService = new ecs.FargateService(this, "WorkerService", {
@@ -291,6 +298,7 @@ export class SeleconPortalStack extends cdk.Stack {
       securityGroups: [webTaskSecurityGroup],
       assignPublicIp: true,
       serviceName: "selecon-portal-dev-worker",
+      circuitBreaker: { enable: true, rollback: true },
     });
 
     const apiTargetGroup = new elbv2.ApplicationTargetGroup(this, "ApiTargetGroup", {
@@ -301,6 +309,27 @@ export class SeleconPortalStack extends cdk.Stack {
       healthCheck: { path: "/health/ready", healthyHttpCodes: "200" },
       targets: [apiService],
     });
+
+    // --- Observabilidade: alarmes mínimos (seção 20) — definido antes da listener rule
+    // porque os alarmes de target group só podem ser criados depois que o target group
+    // está de fato anexado a um load balancer (a API do CDK lança erro em
+    // `.metrics.*` num target group "solto"). ---
+    const alarmTopic = new sns.Topic(this, "AlarmTopic", {
+      topicName: `selecon-portal-${config.tags.Ambiente}-alarms`,
+    });
+    const alarmEmail = this.node.tryGetContext("alarmEmail") as string | undefined;
+    if (alarmEmail) {
+      alarmTopic.addSubscription(new subscriptions.EmailSubscription(alarmEmail));
+    } else {
+      new cdk.CfnOutput(this, "MissingAlarmEmailWarning", {
+        value:
+          "alarmEmail não informado via contexto — nenhuma assinatura foi criada no tópico de alarmes. Passe -c alarmEmail=<endereço> ou assine o SNS topic manualmente depois do deploy.",
+      });
+    }
+
+    function alarmAction(alarm: cloudwatch.Alarm) {
+      alarm.addAlarmAction(new cloudwatch_actions.SnsAction(alarmTopic));
+    }
 
     // A listener rule abaixo assume que o listener HTTP:80 do ALB existente já foi
     // criado fora deste CDK (a stack de preview via CloudFormation). Referencie o ARN
@@ -322,12 +351,78 @@ export class SeleconPortalStack extends cdk.Stack {
         conditions: [elbv2.ListenerCondition.pathPatterns(["/api/*"])],
         action: elbv2.ListenerAction.forward([apiTargetGroup]),
       });
+
+      // Só existem depois que o target group está anexado ao listener acima.
+      alarmAction(
+        new cloudwatch.Alarm(this, "ApiTaskCountLowAlarm", {
+          alarmName: `selecon-portal-${config.tags.Ambiente}-api-running-tasks-low`,
+          metric: apiTargetGroup.metrics.healthyHostCount({ period: cdk.Duration.minutes(1) }),
+          threshold: 1,
+          evaluationPeriods: 2,
+          comparisonOperator: cloudwatch.ComparisonOperator.LESS_THAN_THRESHOLD,
+        }),
+      );
+      alarmAction(
+        new cloudwatch.Alarm(this, "ApiTargetUnhealthyAlarm", {
+          alarmName: `selecon-portal-${config.tags.Ambiente}-api-target-unhealthy`,
+          metric: apiTargetGroup.metrics.unhealthyHostCount({ period: cdk.Duration.minutes(1) }),
+          threshold: 0,
+          evaluationPeriods: 2,
+          comparisonOperator: cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
+        }),
+      );
     } else {
       new cdk.CfnOutput(this, "MissingListenerArnWarning", {
         value:
-          "albListenerArn não informado via contexto (-c albListenerArn=...) — a regra /api/* não foi criada. Rode `aws elbv2 describe-listeners --load-balancer-arn <arn-do-alb>` para obter o ARN.",
+          "albListenerArn não informado via contexto (-c albListenerArn=...) — a regra /api/* e os alarmes de target group não foram criados. Rode `aws elbv2 describe-listeners --load-balancer-arn <arn-do-alb>` para obter o ARN.",
       });
     }
+
+    alarmAction(
+      new cloudwatch.Alarm(this, "ApiServiceCpuHighAlarm", {
+        alarmName: `selecon-portal-${config.tags.Ambiente}-api-cpu-high`,
+        metric: apiService.metricCpuUtilization({ period: cdk.Duration.minutes(5) }),
+        threshold: 85,
+        evaluationPeriods: 3,
+        comparisonOperator: cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
+      }),
+    );
+    alarmAction(
+      new cloudwatch.Alarm(this, "ApiServiceMemoryHighAlarm", {
+        alarmName: `selecon-portal-${config.tags.Ambiente}-api-memory-high`,
+        metric: apiService.metricMemoryUtilization({ period: cdk.Duration.minutes(5) }),
+        threshold: 85,
+        evaluationPeriods: 3,
+        comparisonOperator: cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
+      }),
+    );
+    alarmAction(
+      new cloudwatch.Alarm(this, "RdsCpuHighAlarm", {
+        alarmName: `selecon-portal-${config.tags.Ambiente}-rds-cpu-high`,
+        metric: database.metricCPUUtilization({ period: cdk.Duration.minutes(5) }),
+        threshold: 85,
+        evaluationPeriods: 3,
+        comparisonOperator: cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
+      }),
+    );
+    alarmAction(
+      new cloudwatch.Alarm(this, "RdsFreeStorageLowAlarm", {
+        alarmName: `selecon-portal-${config.tags.Ambiente}-rds-free-storage-low`,
+        metric: database.metricFreeStorageSpace({ period: cdk.Duration.minutes(5) }),
+        threshold: 2 * 1024 * 1024 * 1024, // 2 GiB
+        evaluationPeriods: 1,
+        comparisonOperator: cloudwatch.ComparisonOperator.LESS_THAN_THRESHOLD,
+      }),
+    );
+    alarmAction(
+      new cloudwatch.Alarm(this, "RdsConnectionsHighAlarm", {
+        alarmName: `selecon-portal-${config.tags.Ambiente}-rds-connections-high`,
+        metric: database.metricDatabaseConnections({ period: cdk.Duration.minutes(5) }),
+        threshold: 80,
+        evaluationPeriods: 3,
+        comparisonOperator: cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
+      }),
+    );
 
     new cdk.CfnOutput(this, "DatabaseSecretArn", { value: dbCredentialsSecret.secretArn });
     new cdk.CfnOutput(this, "AppSecretsArn", { value: appSecrets.secretArn });
@@ -339,5 +434,6 @@ export class SeleconPortalStack extends cdk.Stack {
     new cdk.CfnOutput(this, "ApiServiceName", { value: apiService.serviceName });
     new cdk.CfnOutput(this, "WorkerServiceName", { value: workerService.serviceName });
     new cdk.CfnOutput(this, "WebTaskDefinitionFamily", { value: webTaskDefinition.family });
+    new cdk.CfnOutput(this, "ApiTargetGroupArn", { value: apiTargetGroup.targetGroupArn });
   }
 }

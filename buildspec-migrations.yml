@@ -1,0 +1,49 @@
+version: 0.2
+
+# Estágio Migrations do pipeline (seção 12/15/24 do prompt mestre) — execução única e
+# controlada, nunca em cada réplica da API, e nunca `prisma migrate dev` neste ambiente.
+# DATABASE_URL vem do Secrets Manager (nunca do código-fonte ou de variável em texto
+# puro no CodeBuild). Nunca executado neste sandbox — sem RDS real provisionado.
+#
+# Trava contra execução concorrente: usa pg_advisory_lock (nível de sessão) em torno do
+# `prisma migrate deploy` — se duas execuções do pipeline colidirem, a segunda aguarda a
+# primeira liberar a trava antes de aplicar (nunca aplica migrações em paralelo).
+
+phases:
+  pre_build:
+    commands:
+      - set -euo pipefail
+      - export IMAGE_TAG=$(node -pe "require('./image-tag.json').imageTag")
+      - aws ecr get-login-password --region "$AWS_REGION" | docker login --username AWS --password-stdin "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+      # DB_USERNAME/DB_PASSWORD vêm do Secrets Manager (tipo SECRETS_MANAGER na definição
+      # do CodeBuild em pipeline-stack.ts) — nunca ficam em texto puro no repositório.
+      - export DATABASE_URL="postgresql://${DB_USERNAME}:${DB_PASSWORD}@${DB_HOST}:5432/${DB_NAME}"
+
+  build:
+    commands:
+      - set -euo pipefail
+      - |
+        docker run --rm \
+          -e DATABASE_URL="$DATABASE_URL" \
+          "$API_REPOSITORY_URI:$IMAGE_TAG" \
+          node -e "
+            const { Client } = require('pg');
+            (async () => {
+              const client = new Client({ connectionString: process.env.DATABASE_URL });
+              await client.connect();
+              await client.query('SELECT pg_advisory_lock(872364)');
+              try {
+                require('child_process').execSync(
+                  'node_modules/.bin/prisma migrate deploy --schema packages/db/prisma/schema.prisma',
+                  { stdio: 'inherit' },
+                );
+              } finally {
+                await client.query('SELECT pg_advisory_unlock(872364)');
+                await client.end();
+              }
+            })().catch((err) => { console.error(err); process.exit(1); });
+          "
+
+artifacts:
+  files:
+    - image-tag.json

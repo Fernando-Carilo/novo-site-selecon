@@ -1,0 +1,49 @@
+version: 0.2
+
+# Estágio Deploy do pipeline (seção 15/17/18) — registra novas revisões das task
+# definitions com a imagem do commit atual e atualiza os três serviços ECS. O rollback
+# em falha é feito pelo circuit breaker de deployment do próprio ECS (configurado em
+# infrastructure/cdk/lib/selecon-portal-stack.ts — deploymentCircuitBreaker: { enable:
+# true, rollback: true }), não por lógica neste script. Nunca executado neste sandbox.
+
+phases:
+  pre_build:
+    commands:
+      - set -euo pipefail
+      - export IMAGE_TAG=$(node -pe "require('./image-tag.json').imageTag")
+
+  build:
+    commands:
+      - set -euo pipefail
+      - |
+        for SERVICE in web api worker; do
+          FAMILY="selecon-portal-dev-$SERVICE"
+          REPO_VAR="$(echo "$SERVICE" | tr '[:lower:]' '[:upper:]')_REPOSITORY_URI"
+          IMAGE_URI="$(eval echo \$$REPO_VAR):$IMAGE_TAG"
+
+          CURRENT_TASK_DEF=$(aws ecs describe-task-definition --task-definition "$FAMILY" --query 'taskDefinition')
+          NEW_CONTAINER_DEFS=$(echo "$CURRENT_TASK_DEF" | jq --arg IMAGE "$IMAGE_URI" \
+            '.containerDefinitions | map(.image = $IMAGE)')
+          NEW_TASK_DEF=$(echo "$CURRENT_TASK_DEF" | jq --argjson CONTAINERS "$NEW_CONTAINER_DEFS" \
+            '{family, taskRoleArn, executionRoleArn, networkMode, containerDefinitions: $CONTAINERS, requiresCompatibilities, cpu, memory, runtimePlatform}')
+          echo "$NEW_TASK_DEF" > "task-def-$SERVICE.json"
+
+          aws ecs register-task-definition --cli-input-json "file://task-def-$SERVICE.json"
+          aws ecs update-service \
+            --cluster "$ECS_CLUSTER_NAME" \
+            --service "selecon-portal-dev-$SERVICE" \
+            --task-definition "$FAMILY" \
+            --force-new-deployment
+        done
+
+  post_build:
+    commands:
+      - set -euo pipefail
+      - |
+        aws ecs wait services-stable \
+          --cluster "$ECS_CLUSTER_NAME" \
+          --services selecon-portal-dev-web selecon-portal-dev-api selecon-portal-dev-worker
+
+artifacts:
+  files:
+    - image-tag.json

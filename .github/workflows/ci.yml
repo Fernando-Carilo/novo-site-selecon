@@ -130,6 +130,38 @@ jobs:
           cache-from: type=gha,scope=${{ matrix.app }}
           cache-to: type=gha,mode=max,scope=${{ matrix.app }}
 
+  cdk:
+    name: CDK typecheck + synth
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infrastructure/cdk
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: infrastructure/cdk/pnpm-lock.yaml
+      - run: pnpm install --ignore-workspace --frozen-lockfile
+      - run: npx tsc --noEmit
+      - name: cdk synth (sem contexto opcional — deve sintetizar mesmo assim)
+        run: npx cdk synth SeleconPortalDevStack
+      - name: cdk synth (com contexto completo)
+        run: |
+          npx cdk synth SeleconPortalDevStack \
+            -c albListenerArn=arn:aws:elasticloadbalancing:us-east-1:518825425828:listener/app/selecon-portal-dev-alb/EXEMPLO/EXEMPLO \
+            -c alarmEmail=ci@example.com
+          npx cdk synth SeleconPortalPipelineStack \
+            -c codeConnectionArn=arn:aws:codeconnections:us-east-1:518825425828:connection/EXEMPLO \
+            -c databaseSecretArn=arn:aws:secretsmanager:us-east-1:518825425828:secret:selecon-portal/dev/database-Ab12Cd \
+            -c databaseHost=selecon-portal-dev.example.us-east-1.rds.amazonaws.com \
+            -c apiTargetGroupArn=arn:aws:elasticloadbalancing:us-east-1:518825425828:targetgroup/selecon-portal-dev-api/EXEMPLO
+      # Nunca `cdk deploy` no GitHub Actions (seção 26 do prompt mestre) — o deploy
+      # oficial acontece exclusivamente pelo CodePipeline, depois da ativação manual
+      # documentada em infrastructure/README.md e scripts/bootstrap-aws-dev.sh.
+
   secret-scan:
     name: Secret scan
     runs-on: ubuntu-latest
