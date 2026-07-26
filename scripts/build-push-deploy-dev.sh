@@ -22,7 +22,7 @@ set -euo pipefail
 EXPECTED_ACCOUNT="518825425828"
 EXPECTED_REGION="us-east-1"
 EXPECTED_BRANCH="feat/fase-1-design-system"
-EXPECTED_COMMIT="4ad1cd8"
+EXPECTED_COMMIT="5ad7eb8"
 
 VPC_ID="vpc-0b5fb2dcfb604f371"
 CLUSTER_NAME="selecon-portal-dev"
@@ -179,16 +179,20 @@ log "6/13 — Validações antes do deploy"
 LISTENER_ARN="$(aws elbv2 describe-listeners --load-balancer-arn "$ALB_ARN" --query 'Listeners[?Port==`80`].ListenerArn | [0]' --output text)"
 [[ -n "$LISTENER_ARN" && "$LISTENER_ARN" != "None" ]] || fail "Listener HTTP:80 não encontrado no ALB."
 
+STACK_STATUS="$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" --query 'Stacks[0].StackStatus' --output text 2>/dev/null || echo "NOT_FOUND")"
+echo "Status atual de $STACK_NAME: $STACK_STATUS"
+
 EXISTING_RULE_AT_10="$(aws elbv2 describe-rules --listener-arn "$LISTENER_ARN" --query "Rules[?Priority=='10'].RuleArn | [0]" --output text)"
 if [[ -n "$EXISTING_RULE_AT_10" && "$EXISTING_RULE_AT_10" != "None" ]]; then
   RULE_TG="$(aws elbv2 describe-rules --listener-arn "$LISTENER_ARN" --rule-arns "$EXISTING_RULE_AT_10" --query 'Rules[0].Actions[0].TargetGroupArn' --output text)"
-  warn "Já existe uma regra na prioridade 10 (target group: $RULE_TG) — presumivelmente de um deploy anterior desta stack. O 'cdk diff' abaixo mostrará se ela será atualizada; revise com atenção."
+  if [[ "$STACK_STATUS" == "NOT_FOUND" ]]; then
+    fail "Prioridade 10 já está ocupada (target group: $RULE_TG) e $STACK_NAME ainda não existe — não é uma regra desta stack. Investigue e libere a prioridade 10 antes de prosseguir."
+  fi
+  warn "Já existe uma regra na prioridade 10 (target group: $RULE_TG) — presumivelmente desta stack (ela já existe, status $STACK_STATUS). O 'cdk diff' abaixo mostrará se ela será atualizada; revise com atenção."
 else
   ok "Prioridade 10 livre no listener"
 fi
 
-STACK_STATUS="$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" --query 'Stacks[0].StackStatus' --output text 2>/dev/null || echo "NOT_FOUND")"
-echo "Status atual de $STACK_NAME: $STACK_STATUS"
 if [[ "$STACK_STATUS" == "NOT_FOUND" ]]; then
   log "  Primeiro deploy — checando ausência de recursos conflitantes fora desta stack"
   if aws rds describe-db-instances --db-instance-identifier selecon-portal-dev >/dev/null 2>&1; then
@@ -228,7 +232,8 @@ CDK_CONTEXT_ARGS=(-c "albListenerArn=$LISTENER_ARN")
 ok "cdk synth OK"
 
 DIFF_FILE="$(mktemp)"
-(cd "$CDK_DIR" && npx cdk diff "$STACK_NAME" "${CDK_CONTEXT_ARGS[@]}" 2>&1 | tee "$DIFF_FILE") || true
+(cd "$CDK_DIR" && npx cdk diff "$STACK_NAME" "${CDK_CONTEXT_ARGS[@]}" 2>&1 | tee "$DIFF_FILE") \
+  || fail "cdk diff falhou (comando retornou erro, não apenas diferenças) — corrija a causa raiz acima antes de continuar."
 
 log "  Resumo objetivo do diff"
 ADDED="$(grep -c '^\[+\]' "$DIFF_FILE" || true)"
@@ -289,23 +294,44 @@ echo "ApiInternalUrl:    $API_INTERNAL_URL"
 # ============================================================================
 log "9/13 — Atualizando o serviço web existente"
 
-CURRENT_WEB_TASK_DEF="$(aws ecs describe-task-definition --task-definition "$WEB_SERVICE_NAME" --query 'taskDefinition')"
+# Nunca presuma que a família da task definition é igual ao nome do serviço — descubra
+# a task definition REALMENTE em uso consultando o próprio serviço.
+CURRENT_WEB_TASK_DEF_ARN="$(aws ecs describe-services --cluster "$CLUSTER_NAME" --services "$WEB_SERVICE_NAME" \
+  --query 'services[0].taskDefinition' --output text)"
+[[ -n "$CURRENT_WEB_TASK_DEF_ARN" && "$CURRENT_WEB_TASK_DEF_ARN" != "None" ]] \
+  || fail "Não foi possível descobrir a task definition atual do serviço $WEB_SERVICE_NAME."
+echo "Task definition atual do serviço web: $CURRENT_WEB_TASK_DEF_ARN"
+
+CURRENT_WEB_TASK_DEF="$(aws ecs describe-task-definition --task-definition "$CURRENT_WEB_TASK_DEF_ARN" \
+  --include TAGS --query '{taskDefinition: taskDefinition, tags: tags}')"
+CURRENT_WEB_TAGS="$(echo "$CURRENT_WEB_TASK_DEF" | jq '.tags // []')"
+
 NEW_WEB_CONTAINER_DEFS="$(echo "$CURRENT_WEB_TASK_DEF" | jq --arg IMAGE "${REMOTE_URIS[web]}" --arg API_URL "$API_INTERNAL_URL" '
-  .containerDefinitions | map(
+  .taskDefinition.containerDefinitions | map(
     .image = $IMAGE
     | .environment = ((.environment // []) | map(select(.name != "API_INTERNAL_URL")) + [{name: "API_INTERNAL_URL", value: $API_URL}])
   )
 ')
-NEW_WEB_TASK_DEF="$(echo "$CURRENT_WEB_TASK_DEF" | jq --argjson CONTAINERS "$NEW_WEB_CONTAINER_DEFS" '
-  {family, taskRoleArn, executionRoleArn, networkMode, containerDefinitions: $CONTAINERS, requiresCompatibilities, cpu, memory, runtimePlatform}
+# Preserva TODAS as propriedades atuais da task definition (volumes, tags,
+# ephemeralStorage, placementConstraints, etc.) — remove só os campos imutáveis que
+# describe-task-definition devolve mas register-task-definition rejeita como entrada.
+NEW_WEB_TASK_DEF="$(echo "$CURRENT_WEB_TASK_DEF" | jq --argjson CONTAINERS "$NEW_WEB_CONTAINER_DEFS" --argjson TAGS "$CURRENT_WEB_TAGS" '
+  .taskDefinition
+  | .containerDefinitions = $CONTAINERS
+  | (if ($TAGS | length) > 0 then .tags = $TAGS else . end)
+  | del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy, .deregisteredAt)
 ')
 WEB_TASK_DEF_FILE="$(mktemp)"
 echo "$NEW_WEB_TASK_DEF" > "$WEB_TASK_DEF_FILE"
-aws ecs register-task-definition --cli-input-json "file://$WEB_TASK_DEF_FILE" >/dev/null
+NEW_WEB_TASK_DEF_ARN="$(aws ecs register-task-definition --cli-input-json "file://$WEB_TASK_DEF_FILE" \
+  --query 'taskDefinition.taskDefinitionArn' --output text)"
 rm -f "$WEB_TASK_DEF_FILE"
+[[ -n "$NEW_WEB_TASK_DEF_ARN" && "$NEW_WEB_TASK_DEF_ARN" != "None" ]] \
+  || fail "Falha ao registrar a nova revisão da task definition do serviço web."
+echo "Nova task definition registrada: $NEW_WEB_TASK_DEF_ARN"
 
 aws ecs update-service --cluster "$CLUSTER_NAME" --service "$WEB_SERVICE_NAME" \
-  --task-definition "$WEB_SERVICE_NAME" --force-new-deployment >/dev/null
+  --task-definition "$NEW_WEB_TASK_DEF_ARN" --force-new-deployment >/dev/null
 ok "Serviço $WEB_SERVICE_NAME atualizado para a nova task definition/imagem"
 
 # api/worker usam a tag mutável ":dev" — cdk deploy só percebe mudança se a PROPRIEDADE
@@ -324,14 +350,25 @@ aws ecs wait services-stable --cluster "$CLUSTER_NAME" \
 # ETAPA 8 — validar ECS
 # ============================================================================
 log "10/13 — Validando ECS"
+ECS_UNHEALTHY=0
 for SERVICE in "$WEB_SERVICE_NAME" "$API_SERVICE_NAME" "$WORKER_SERVICE_NAME"; do
   echo "--- $SERVICE ---"
-  aws ecs describe-services --cluster "$CLUSTER_NAME" --services "$SERVICE" \
-    --query 'services[0].{serviceName:serviceName,desiredCount:desiredCount,runningCount:runningCount,pendingCount:pendingCount,rolloutState:deployments[0].rolloutState,taskDefinition:taskDefinition}' \
-    --output table
+  SERVICE_JSON="$(aws ecs describe-services --cluster "$CLUSTER_NAME" --services "$SERVICE" \
+    --query 'services[0].{serviceName:serviceName,desiredCount:desiredCount,runningCount:runningCount,pendingCount:pendingCount,rolloutState:deployments[0].rolloutState,taskDefinition:taskDefinition}')"
+  echo "$SERVICE_JSON" | jq -r '"  desiredCount=\(.desiredCount) runningCount=\(.runningCount) pendingCount=\(.pendingCount) rolloutState=\(.rolloutState)\n  taskDefinition=\(.taskDefinition)"'
   echo "Eventos recentes:"
   aws ecs describe-services --cluster "$CLUSTER_NAME" --services "$SERVICE" \
     --query 'services[0].events[0:5].{time:createdAt,message:message}' --output table
+
+  DESIRED="$(echo "$SERVICE_JSON" | jq -r '.desiredCount')"
+  RUNNING="$(echo "$SERVICE_JSON" | jq -r '.runningCount')"
+  PENDING="$(echo "$SERVICE_JSON" | jq -r '.pendingCount')"
+  if [[ "$RUNNING" != "$DESIRED" || "$PENDING" != "0" ]]; then
+    warn "$SERVICE fora do steady state (desired=$DESIRED running=$RUNNING pending=$PENDING)"
+    ECS_UNHEALTHY=1
+  else
+    ok "$SERVICE em steady state (desired=$DESIRED running=$RUNNING pending=0)"
+  fi
 done
 
 log "  Checando tasks paradas por falha (janela recente)"
@@ -349,6 +386,10 @@ for SERVICE in "$WEB_SERVICE_NAME" "$API_SERVICE_NAME" "$WORKER_SERVICE_NAME"; d
 done
 [[ "$FOUND_FAILURE" == "0" ]] && ok "Nenhum padrão de falha conhecido encontrado em tasks paradas recentes"
 
+if [[ "$ECS_UNHEALTHY" == "1" ]]; then
+  fail "Um ou mais serviços ECS não estão em steady state (runningCount != desiredCount ou pendingCount != 0) — ver detalhes acima. Não prossiga até corrigir a causa raiz."
+fi
+
 # ============================================================================
 # ETAPA 9 — validar ALB
 # ============================================================================
@@ -360,17 +401,9 @@ aws elbv2 describe-rules --listener-arn "$LISTENER_ARN" --output table
 echo "Target health (api):"
 aws elbv2 describe-target-health --target-group-arn "$API_TARGET_GROUP_ARN" --output table
 
-echo
-echo "Testando a URL pública real..."
-HOME_CODE="$(curl -s -o /dev/null -w '%{http_code}' --max-time 15 "http://$ALB_DNS/" || echo "000")"
-API_CODE="$(curl -s -o /dev/null -w '%{http_code}' --max-time 15 "http://$ALB_DNS/api/health/ready" || echo "000")"
-echo "GET /                    -> $HOME_CODE"
-echo "GET /api/health/ready    -> $API_CODE"
-[[ "$HOME_CODE" == "200" ]] || warn "Home não retornou 200 (retornou $HOME_CODE) — investigue via logs (próxima etapa) antes de considerar concluído."
-[[ "$API_CODE" == "200" ]] || warn "/api/health/ready não retornou 200 (retornou $API_CODE) — investigue via logs antes de considerar concluído."
-
 # ============================================================================
-# ETAPA 10 — logs
+# ETAPA 10 — logs (checados ANTES dos testes HTTP abaixo, para já estarem disponíveis
+# no terminal caso algum teste falhe e o script pare)
 # ============================================================================
 log "  Checando logs recentes por padrões de falha"
 for LOG_GROUP in /selecon-portal/dev/web /selecon-portal/dev/api /selecon-portal/dev/worker; do
@@ -383,6 +416,16 @@ for LOG_GROUP in /selecon-portal/dev/web /selecon-portal/dev/api /selecon-portal
     echo "  (nenhum padrão de erro encontrado nas últimas linhas)"
   fi
 done
+
+echo
+echo "Testando a URL pública real..."
+HOME_CODE="$(curl -s -o /dev/null -w '%{http_code}' --max-time 15 "http://$ALB_DNS/" || echo "000")"
+API_CODE="$(curl -s -o /dev/null -w '%{http_code}' --max-time 15 "http://$ALB_DNS/api/health/ready" || echo "000")"
+echo "GET /                    -> $HOME_CODE"
+echo "GET /api/health/ready    -> $API_CODE"
+[[ "$HOME_CODE" == "200" ]] || fail "Home não retornou 200 (retornou $HOME_CODE). Não considere a ativação concluída — investigue a causa raiz (ver logs acima) antes de prosseguir."
+[[ "$API_CODE" == "200" ]] || fail "/api/health/ready não retornou 200 (retornou $API_CODE). Não considere a ativação concluída — investigue a causa raiz (ver logs acima) antes de prosseguir."
+ok "Home e /api/health/ready retornaram 200"
 
 # ============================================================================
 # ETAPA 11 — migrações (execução única, controlada, via task Fargate avulsa)
@@ -427,7 +470,15 @@ STATUS_TASK_OUTPUT="$(aws ecs run-task \
   --overrides '{"containerOverrides":[{"name":"api","command":["node_modules/.bin/prisma","migrate","status","--schema","packages/db/prisma/schema.prisma"]}]}' \
   --query 'tasks[0].taskArn' --output text)"
 aws ecs wait tasks-stopped --cluster "$CLUSTER_NAME" --tasks "$STATUS_TASK_OUTPUT"
-echo "(ver /selecon-portal/dev/api para a saída de 'prisma migrate status' — deve indicar 'Database schema is up to date!')"
+
+STATUS_EXIT_CODE="$(aws ecs describe-tasks --cluster "$CLUSTER_NAME" --tasks "$STATUS_TASK_OUTPUT" \
+  --query 'tasks[0].containers[0].exitCode' --output text)"
+# `prisma migrate status` sai com código != 0 se houver qualquer migração pendente —
+# esta é a confirmação real de "nenhuma migração pendente", não apenas uma suposição.
+if [[ "$STATUS_EXIT_CODE" != "0" ]]; then
+  fail "'prisma migrate status' indicou migração(ões) pendente(s) ou erro (exitCode=$STATUS_EXIT_CODE). Ver /selecon-portal/dev/api para a saída completa antes de prosseguir."
+fi
+ok "Nenhuma migração pendente (prisma migrate status: exitCode=0)"
 
 echo
 echo "Usuários/credenciais iniciais: aplicados pelo seed já documentado em"
