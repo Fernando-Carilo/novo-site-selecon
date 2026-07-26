@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { buttonClassNames } from "@selecon/ui";
-import { apiFetch } from "@/lib/api-client";
+import { apiFetch, ApiError } from "@/lib/api-client";
 
 export default function AdminLoginPage() {
   const router = useRouter();
@@ -23,8 +23,12 @@ export default function AdminLoginPage() {
       });
       router.push(result.mustChangePassword ? "/admin/trocar-senha" : "/admin");
       router.refresh();
-    } catch {
-      setError("E-mail ou senha incorretos.");
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 429) {
+        setError("Muitas tentativas de acesso. Aguarde um minuto e tente novamente.");
+      } else {
+        setError("E-mail ou senha incorretos.");
+      }
     } finally {
       setSubmitting(false);
     }
