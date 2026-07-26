@@ -4,6 +4,7 @@ import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler";
 import { AdvertisingModule } from "./advertising/advertising.module.js";
 import { AuditModule } from "./audit/audit.module.js";
 import { AuthModule } from "./auth/auth.module.js";
+import { CandidateModule } from "./candidate/candidate.module.js";
 import { ContentModule } from "./content/content.module.js";
 import { ContestsModule } from "./contests/contests.module.js";
 import { HealthModule } from "./health/health.module.js";
@@ -18,6 +19,7 @@ import { WhistleblowingModule } from "./whistleblowing/whistleblowing.module.js"
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 120 }]),
     AuditModule,
     AuthModule,
+    CandidateModule,
     ContentModule,
     ContestsModule,
     TicketsModule,
