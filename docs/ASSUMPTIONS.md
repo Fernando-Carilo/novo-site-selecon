@@ -64,3 +64,21 @@ provisionamento.
 
 Todos os dados de seed (concursos, usuários, tickets, denúncias, campanhas) serão fictícios,
 claramente identificados como demo, sem qualquer semelhança com pessoas ou casos reais.
+
+## 8. Localização real do código de infraestrutura
+
+A premissa 6 previa `infra/` como diretório de IaC de referência. Na prática, o código real de
+CDK (pipeline de 6 estágios, ECS, alarmes, scripts de ativação) foi criado em
+`infrastructure/cdk` — `infra/` permaneceu vazio e não foi versionado. `docs/ARCHITECTURE.md`,
+`README.md` e `infrastructure/README.md` referenciam o caminho correto.
+
+## 9. Expansão do design system sem retrofit das páginas existentes
+
+Ao adicionar novos componentes reutilizáveis a `packages/ui` (Badge, Alert, TextField/SelectField,
+Card, EmptyState, Skeleton, Pagination), optou-se por **não** substituir a marcação equivalente já
+existente em cada página administrativa (que já usa os mesmos tokens de design diretamente via
+Tailwind e está coberta pela suíte E2E). Uma migração retroativa em massa, feita sob pressão de
+tempo logo após estabilizar a suíte E2E, teria alto risco de regressão sem benefício funcional —
+apenas cosmético. Os novos componentes ficam disponíveis, tipados, com lint/typecheck/build
+verificados, prontos para adoção incremental em código novo ou em uma fase futura dedicada a essa
+migração.

@@ -125,7 +125,8 @@ sequenceDiagram
 
 ## 6. Estado desta versão do documento
 
-Este documento reflete a arquitetura de **fundação (Fase 0)**. Os módulos de domínio ainda
-não têm implementação completa de regras de negócio — apenas a estrutura de pastas, schema de
-dados inicial e interfaces de adapter. Cada fase subsequente deve atualizar este documento com
-os diagramas e decisões específicas do módulo implementado.
+Todos os módulos de domínio descritos neste documento (conteúdo/CMS, concursos, atendimento,
+denúncias, anúncios, candidato, admin/RBAC) têm implementação completa de regras de negócio,
+validada por testes de integração reais (Postgres) e pela suíte E2E — ver `docs/TEST_REPORT.md`.
+A infraestrutura AWS (`infrastructure/cdk`) está pronta e `cdk synth`-validada, mas nenhum
+recurso foi provisionado nesta sessão (sandbox sem credenciais reais).

@@ -29,7 +29,8 @@ novo-site-selecon/
 │  ├─ integrations/           # Interfaces + mocks: CandidateProvider, EmailProvider, MessagingProvider, Storage
 │  ├─ observability/           # Logger estruturado + bootstrap OpenTelemetry
 │  └─ config/                 # tsconfig base, eslint config, validação de env (Zod)
-├─ infra/                    # IaC (Terraform) — apenas código de referência, sem apply
+├─ infrastructure/cdk/       # IaC real (AWS CDK/TypeScript) — cdk synth-validado, sem deploy real
+├─ e2e/                      # Suíte Playwright de ponta a ponta (fora do workspace pnpm)
 ├─ docs/
 ├─ .github/workflows/
 ├─ docker-compose.yml
@@ -42,22 +43,21 @@ Justificativas técnicas detalhadas estão registradas em `docs/DECISIONS/` (ADR
 
 | Fase | Escopo                                                              | Status                                                                                   |
 | ---- | ------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| 0    | Descoberta e fundação (monorepo, tooling, CI, docker-compose, docs) | **Em execução nesta sessão**                                                             |
-| 1    | Design system e shells (público/admin), RBAC inicial, Storybook     | Bloqueada parcialmente: aguarda `selecon-portal-v2.html` para fidelidade visual completa |
-| 2    | CMS e portal institucional                                          | Não iniciada                                                                             |
-| 3    | Concursos e página do edital                                        | Não iniciada                                                                             |
-| 4    | Área do candidato e adapters                                        | Não iniciada                                                                             |
-| 5    | Atendimento omnichannel                                             | Não iniciada                                                                             |
-| 6    | Canal de denúncias                                                  | Não iniciada                                                                             |
-| 7    | Anúncios e governança comercial                                     | Não iniciada                                                                             |
-| 8    | Segurança, performance e operação                                   | Não iniciada                                                                             |
-| 9    | Migração e go-live                                                  | Não iniciada                                                                             |
+| 0    | Descoberta e fundação (monorepo, tooling, CI, docker-compose, docs) | ✅ Concluída                                                                              |
+| 1    | Design system e shells (público/admin), RBAC inicial                | ✅ Concluída (sem o HTML de referência original — tokens/fidelidade seguiram a seção 5.2 do prompt mestre; design system expandido na Fase 8, ver `docs/ASSUMPTIONS.md` item 9) |
+| 2    | CMS e portal institucional                                          | ✅ Concluída                                                                              |
+| 3    | Concursos e página do edital                                        | ✅ Concluída                                                                              |
+| 4    | Área do candidato e adapters                                        | ✅ Concluída                                                                              |
+| 5    | Atendimento omnichannel                                             | ✅ Concluída                                                                              |
+| 6    | Canal de denúncias                                                  | ✅ Concluída                                                                              |
+| 7    | Anúncios e governança comercial                                     | ✅ Concluída                                                                              |
+| 8    | Segurança, infraestrutura (CDK), E2E, hardening, documentação       | ✅ Concluída (código de infraestrutura pronto e `cdk synth`-validado; nenhum recurso AWS provisionado nesta sessão — ativação real é responsabilidade do operador com credenciais, ver `infrastructure/README.md`) |
+| 9    | Migração e go-live                                                  | Fora do escopo desta sessão — depende de decisão/execução do Instituto (corte de DNS, migração de dados dos 3 portais legados) |
 
-Cada fase subsequente exige uma sessão de trabalho dedicada (o escopo total descrito no
-prompt mestre — omnichannel completo, canal de denúncias segregado, anúncios com governança,
-infraestrutura AWS produtiva e migração de três portais — corresponde a um programa de meses
-de um time multidisciplinar, não a uma única sessão). Este plano será atualizado a cada fase
-concluída com entregas reais, não aspiracionais.
+Todas as fases funcionais (0–8) foram entregues e validadas nesta sessão: lint, typecheck,
+testes de unidade/integração e a suíte E2E (Playwright, 22 fluxos, desktop + mobile) passam de
+ponta a ponta contra Postgres/Redis reais. Ver `docs/TEST_REPORT.md` para os resultados
+completos e os bugs reais encontrados/corrigidos ao longo da validação.
 
 ## Fase 0 — Escopo detalhado e critério de saída
 
@@ -95,12 +95,17 @@ Entregas desta fase:
 - CI configurado (não necessariamente executado em um runner real nesta sessão, mas
   validado localmente com os mesmos comandos).
 
-## Próximos passos após a Fase 0
+## Próximos passos (Fase 9 e além)
 
-1. Solicitar `selecon-portal-v2.html` para destravar fidelidade visual da Fase 1.
-2. Iniciar Fase 1: tokens completos, componentes acessíveis (Radix/shadcn), shells
-   público e administrativo, autenticação de desenvolvimento, RBAC inicial, catálogo de
-   componentes.
-3. Antes de qualquer integração real (Microsoft Graph, WhatsApp Cloud API, sistema do
-   candidato) ou provisionamento AWS: apresentar lista de credenciais/permissões
-   necessárias e aguardar autorização explícita, conforme regra 3.12 e seção 21.8.
+1. Ativação da infraestrutura AWS pelo operador humano com credenciais reais, via
+   `infrastructure/README.md` e `scripts/bootstrap-aws-dev.sh` (guiado, com confirmação
+   antes de cada etapa de deploy).
+2. Antes de qualquer integração externa real (Microsoft Graph, WhatsApp Cloud API, sistema
+   do candidato): apresentar lista de credenciais/permissões necessárias e aguardar
+   autorização explícita, conforme regra 3.12 e seção 21.8 do prompt mestre.
+3. Migração de dados e corte de DNS dos três portais legados (Fase 9) — depende de decisão
+   e execução do Instituto Selecon, fora do escopo de código desta sessão; ver
+   `docs/MIGRATION_PLAN.md`.
+4. Adoção incremental dos novos componentes de `packages/ui` (Badge, Alert, TextField/
+   SelectField, Card, EmptyState, Skeleton, Pagination) nas páginas administrativas
+   existentes — ver `docs/ASSUMPTIONS.md` item 9.
