@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import { getCurrentUser } from "@/lib/session";
+import { AdminMobileNav } from "./admin-mobile-nav";
 import { LogoutButton } from "./logout-button";
 
 const NAV_ITEMS = [
@@ -11,6 +12,10 @@ const NAV_ITEMS = [
   { href: "/admin/atendimento", label: "Atendimento" },
   { href: "/admin/denuncias", label: "Canal de denúncias" },
   { href: "/admin/anuncios", label: "Anúncios" },
+  { href: "/admin/usuarios", label: "Usuários" },
+  { href: "/admin/perfis", label: "Perfis e permissões" },
+  { href: "/admin/auditoria", label: "Auditoria" },
+  { href: "/admin/configuracoes", label: "Configurações" },
 ];
 
 export default async function AdminDashboardLayout({ children }: { children: ReactNode }) {
@@ -38,11 +43,16 @@ export default async function AdminDashboardLayout({ children }: { children: Rea
         </nav>
       </aside>
       <div className="flex-1">
-        <header className="border-border bg-surface flex items-center justify-between border-b px-6 py-4">
-          <p className="text-sm">
-            <span className="font-semibold">{user.displayName}</span>{" "}
-            <span className="text-text-secondary">({user.roles.join(", ")})</span>
-          </p>
+        <header className="border-border bg-navy-primary md:bg-surface relative flex items-center justify-between border-b px-4 py-3 md:px-6 md:py-4">
+          <div className="flex items-center gap-3">
+            <AdminMobileNav items={NAV_ITEMS} />
+            <p className="md:text-text-primary text-sm text-white">
+              <span className="font-semibold">{user.displayName}</span>{" "}
+              <span className="md:text-text-secondary text-white/70">
+                ({user.roles.join(", ")})
+              </span>
+            </p>
+          </div>
           <LogoutButton />
         </header>
         <main id="main-content" className="p-6">

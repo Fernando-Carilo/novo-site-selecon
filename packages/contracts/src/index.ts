@@ -7,3 +7,6 @@ export * from "./whistleblowing/whistleblowing.js";
 export * from "./advertising/advertising.js";
 export * from "./content/content.js";
 export * from "./candidate/candidate.js";
+export * from "./audit/audit.js";
+export * from "./admin/dashboard.js";
+export * from "./admin/users.js";

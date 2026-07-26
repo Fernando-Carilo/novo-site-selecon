@@ -1,6 +1,7 @@
 import { Module } from "@nestjs/common";
 import { APP_GUARD } from "@nestjs/core";
 import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler";
+import { AdminModule } from "./admin/admin.module.js";
 import { AdvertisingModule } from "./advertising/advertising.module.js";
 import { AuditModule } from "./audit/audit.module.js";
 import { AuthModule } from "./auth/auth.module.js";
@@ -17,6 +18,7 @@ import { WhistleblowingModule } from "./whistleblowing/whistleblowing.module.js"
     // Rate limit padrão (regra 12.1). Rotas sensíveis (login, denúncias) usam
     // limites mais estritos via @Throttle() quando implementadas.
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 120 }]),
+    AdminModule,
     AuditModule,
     AuthModule,
     CandidateModule,
