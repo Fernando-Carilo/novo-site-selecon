@@ -7,7 +7,7 @@ import { NextRequest, NextResponse } from "next/server";
  * exigido: "o frontend deve consumir a API pela mesma origem sempre que
  * possível". Repassa cookies e o cabeçalho Set-Cookie de volta ao navegador.
  */
-const API_INTERNAL_URL = process.env.API_INTERNAL_URL ?? "http://localhost:3001";
+const API_INTERNAL_URL = process.env.API_INTERNAL_URL ?? "http://localhost:3001/api";
 
 async function proxy(request: NextRequest, path: string[]): Promise<NextResponse> {
   const targetUrl = new URL(`${API_INTERNAL_URL}/${path.join("/")}`);

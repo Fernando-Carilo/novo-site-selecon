@@ -13,6 +13,7 @@ import * as sns from "aws-cdk-lib/aws-sns";
 import * as subscriptions from "aws-cdk-lib/aws-sns-subscriptions";
 import * as logs from "aws-cdk-lib/aws-logs";
 import * as iam from "aws-cdk-lib/aws-iam";
+import * as servicediscovery from "aws-cdk-lib/aws-servicediscovery";
 import { Construct } from "constructs";
 import type { DevConfig } from "../config/dev";
 
@@ -243,9 +244,27 @@ export class SeleconPortalStack extends cdk.Stack {
       image: ecs.ContainerImage.fromEcrRepository(apiRepo, "dev"),
       portMappings: [{ containerPort: 3001 }],
       logging: ecs.LogDrivers.awsLogs({ streamPrefix: "api", logGroup: apiLogGroup }),
-      environment: { NODE_ENV: "production", API_PORT: "3001" },
+      environment: {
+        NODE_ENV: "production",
+        API_PORT: "3001",
+        // REDIS_URL é obrigatório em packages/config/src/env.ts (Zod) — sem ele o
+        // container falha na validação de env já no boot (EssentialContainerExited).
+        // Não é sensível (sem authToken configurado no cache cluster), por isso vai em
+        // "environment", não em "secrets".
+        REDIS_URL: `redis://${cacheCluster.attrRedisEndpointAddress}:${cacheCluster.attrRedisEndpointPort}`,
+      },
+      // O segredo do RDS (após o attachment automático feito pela integração
+      // Secrets Manager + RDS) contém host/port/dbname/username/password como campos
+      // separados de um único JSON — não uma connection string pronta. O ECS Secret só
+      // mapeia UM campo por variável de ambiente, então cada pedaço vai para sua própria
+      // variável; `packages/db/src/client.ts` monta a `DATABASE_URL` real a partir delas
+      // antes de instanciar o Prisma Client.
       secrets: {
-        DATABASE_URL: ecs.Secret.fromSecretsManager(dbCredentialsSecret),
+        DB_HOST: ecs.Secret.fromSecretsManager(dbCredentialsSecret, "host"),
+        DB_PORT: ecs.Secret.fromSecretsManager(dbCredentialsSecret, "port"),
+        DB_NAME: ecs.Secret.fromSecretsManager(dbCredentialsSecret, "dbname"),
+        DB_USER: ecs.Secret.fromSecretsManager(dbCredentialsSecret, "username"),
+        DB_PASSWORD: ecs.Secret.fromSecretsManager(dbCredentialsSecret, "password"),
         DEV_SESSION_SECRET: ecs.Secret.fromSecretsManager(appSecrets, "sessionSecret"),
       },
     });
@@ -264,9 +283,16 @@ export class SeleconPortalStack extends cdk.Stack {
     workerTaskDefinition.addContainer("worker", {
       image: ecs.ContainerImage.fromEcrRepository(workerRepo, "dev"),
       logging: ecs.LogDrivers.awsLogs({ streamPrefix: "worker", logGroup: workerLogGroup }),
-      environment: { NODE_ENV: "production" },
+      environment: {
+        NODE_ENV: "production",
+        REDIS_URL: `redis://${cacheCluster.attrRedisEndpointAddress}:${cacheCluster.attrRedisEndpointPort}`,
+      },
       secrets: {
-        DATABASE_URL: ecs.Secret.fromSecretsManager(dbCredentialsSecret),
+        DB_HOST: ecs.Secret.fromSecretsManager(dbCredentialsSecret, "host"),
+        DB_PORT: ecs.Secret.fromSecretsManager(dbCredentialsSecret, "port"),
+        DB_NAME: ecs.Secret.fromSecretsManager(dbCredentialsSecret, "dbname"),
+        DB_USER: ecs.Secret.fromSecretsManager(dbCredentialsSecret, "username"),
+        DB_PASSWORD: ecs.Secret.fromSecretsManager(dbCredentialsSecret, "password"),
       },
     });
 
@@ -279,6 +305,20 @@ export class SeleconPortalStack extends cdk.Stack {
       { mutable: false },
     );
 
+    // --- Descoberta de serviço privada (DNS via Cloud Map) — apps/web fala com apps/api
+    // servidor-a-servidor (nunca pelo navegador; ver apps/web/app/api/[...path]/route.ts).
+    // Como web e api rodam em tasks Fargate separadas (sem localhost em comum), o serviço
+    // web (já existente, gerenciado fora deste CDK) precisa de um endereço interno estável
+    // para a API — daí este namespace de DNS privado associado à VPC. É resolvível por
+    // qualquer recurso da VPC automaticamente (nenhuma mudança adicional é necessária no
+    // serviço web existente para RESOLVER o nome; só sua variável de ambiente
+    // API_INTERNAL_URL precisa apontar para cá — ver scripts/build-push-deploy-dev.sh).
+    const serviceDiscoveryNamespace = new servicediscovery.PrivateDnsNamespace(
+      this,
+      "ServiceDiscoveryNamespace",
+      { name: "selecon-portal.internal", vpc },
+    );
+
     const apiService = new ecs.FargateService(this, "ApiService", {
       cluster,
       taskDefinition: apiTaskDefinition,
@@ -289,6 +329,11 @@ export class SeleconPortalStack extends cdk.Stack {
       // Rollback automático (seção 17) — se a nova revisão da task não atingir o
       // steady state, o ECS reverte para a revisão anterior sozinho.
       circuitBreaker: { enable: true, rollback: true },
+      cloudMapOptions: {
+        cloudMapNamespace: serviceDiscoveryNamespace,
+        name: "api",
+        dnsRecordType: servicediscovery.DnsRecordType.A,
+      },
     });
 
     const workerService = new ecs.FargateService(this, "WorkerService", {
@@ -306,7 +351,7 @@ export class SeleconPortalStack extends cdk.Stack {
       port: 3001,
       protocol: elbv2.ApplicationProtocol.HTTP,
       targetType: elbv2.TargetType.IP,
-      healthCheck: { path: "/health/ready", healthyHttpCodes: "200" },
+      healthCheck: { path: "/api/health/ready", healthyHttpCodes: "200" },
       targets: [apiService],
     });
 
@@ -433,6 +478,11 @@ export class SeleconPortalStack extends cdk.Stack {
     new cdk.CfnOutput(this, "DatabaseEndpoint", { value: database.dbInstanceEndpointAddress });
     new cdk.CfnOutput(this, "ApiServiceName", { value: apiService.serviceName });
     new cdk.CfnOutput(this, "WorkerServiceName", { value: workerService.serviceName });
+    new cdk.CfnOutput(this, "ApiInternalUrl", {
+      value: "http://api.selecon-portal.internal:3001/api",
+      description:
+        "Valor a definir como API_INTERNAL_URL no serviço web existente (proxy servidor-a-servidor de apps/web).",
+    });
     new cdk.CfnOutput(this, "WebTaskDefinitionFamily", { value: webTaskDefinition.family });
     new cdk.CfnOutput(this, "ApiTargetGroupArn", { value: apiTargetGroup.targetGroupArn });
   }

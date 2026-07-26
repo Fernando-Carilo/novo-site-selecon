@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import type { CurrentUser } from "@selecon/contracts";
 
-const API_INTERNAL_URL = process.env.API_INTERNAL_URL ?? "http://localhost:3001";
+const API_INTERNAL_URL = process.env.API_INTERNAL_URL ?? "http://localhost:3001/api";
 
 /** Lê a sessão atual no servidor, repassando o cookie recebido do navegador. */
 export async function getCurrentUser(): Promise<CurrentUser | null> {

@@ -17,6 +17,12 @@ async function bootstrap() {
     logger: ["error", "warn", "log"],
   });
 
+  // Prefixo global "api" — necessário para que a regra do ALB (path pattern "/api/*",
+  // sem reescrita de caminho: o ALB nunca remove o prefixo antes de encaminhar) alcance
+  // as rotas certas. Em desenvolvimento local, apps/web usa API_INTERNAL_URL com o mesmo
+  // sufixo "/api" (ver .env.example) para manter o comportamento idêntico ao de produção.
+  app.setGlobalPrefix("api");
+
   await app.register(helmet, {
     contentSecurityPolicy: {
       directives: {

@@ -3,7 +3,7 @@
  * apps/api — não passam pelo proxy `/api/*` (que existe para o navegador).
  * Usado para dados públicos que não dependem de sessão do usuário.
  */
-const API_INTERNAL_URL = process.env.API_INTERNAL_URL ?? "http://localhost:3001";
+const API_INTERNAL_URL = process.env.API_INTERNAL_URL ?? "http://localhost:3001/api";
 
 export async function fetchApi<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_INTERNAL_URL}${path}`, {
