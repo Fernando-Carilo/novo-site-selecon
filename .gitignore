@@ -37,3 +37,7 @@ packages/db/generated/
 
 # Redis local dump (gerado pelo redis-server em desenvolvimento)
 dump.rdb
+
+# CDK (infrastructure/cdk)
+infrastructure/cdk/cdk.out/
+infrastructure/cdk/dist/
