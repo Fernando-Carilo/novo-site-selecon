@@ -8,10 +8,17 @@ export const E2E_PASSWORD = "E2E-teste-local-2026!";
  * submit nativo do navegador (GET com os campos na query string) se o clique
  * acontecer antes do React anexar o `onSubmit`. Bug real encontrado pela própria
  * suíte E2E na primeira execução (ver tests/admin-auth.spec.ts).
+ *
+ * `networkidle` sozinho não é suficiente: sob CPU sob carga (Chromium headless
+ * com renderização via software), a rede pode ficar ociosa antes do React
+ * terminar de commitar os event listeners, reproduzindo o mesmo bug de forma
+ * intermitente. `<html data-hydrated="true">` (ver components/HydrationMarker.tsx)
+ * só é definido depois que o React monta, então esperar por ele é determinístico.
  */
 export async function gotoAndReady(page: Page, path: string): Promise<void> {
   await page.goto(path);
   await page.waitForLoadState("networkidle");
+  await page.waitForSelector("html[data-hydrated='true']", { state: "attached" });
 }
 
 export async function loginAsAdmin(page: Page, email: string): Promise<void> {
