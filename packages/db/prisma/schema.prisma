@@ -65,19 +65,23 @@ enum ScopeType {
 }
 
 model User {
-  id            String     @id @default(uuid())
-  email         String     @unique
-  displayName   String
-  status        UserStatus @default(ACTIVE)
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
-  deactivatedAt DateTime?
+  id                 String     @id @default(uuid())
+  email              String     @unique
+  displayName        String
+  status             UserStatus @default(ACTIVE)
+  /// Hash Argon2id da senha de autenticação de desenvolvimento (provider LOCAL_DEV).
+  /// Nulo para usuários que só autenticam via SSO real (Fase 8+). Nunca texto puro.
+  passwordHash       String?
+  mustChangePassword Boolean    @default(false)
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+  deactivatedAt      DateTime?
 
   identityAccounts IdentityProviderAccount[]
   userRoles        UserRole[]
   sessions         Session[]
   loginEvents      LoginEvent[]
-  privilegedGrants PrivilegedAccessGrant[] @relation("PrivilegedGrantSubject")
+  privilegedGrants PrivilegedAccessGrant[]   @relation("PrivilegedGrantSubject")
 
   @@schema("identity")
 }
@@ -127,15 +131,15 @@ model RolePermission {
 }
 
 model UserRole {
-  id             String   @id @default(uuid())
-  userId         String
-  user           User     @relation(fields: [userId], references: [id])
-  roleId         String
-  role           Role     @relation(fields: [roleId], references: [id])
+  id              String    @id @default(uuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id])
+  roleId          String
+  role            Role      @relation(fields: [roleId], references: [id])
   grantedByUserId String
-  validFrom      DateTime @default(now())
-  validUntil     DateTime?
-  createdAt      DateTime @default(now())
+  validFrom       DateTime  @default(now())
+  validUntil      DateTime?
+  createdAt       DateTime  @default(now())
 
   scopeAssignments ScopeAssignment[]
 
@@ -182,6 +186,9 @@ model Session {
   id               String    @id @default(uuid())
   userId           String
   user             User      @relation(fields: [userId], references: [id])
+  /// SHA-256 do token de sessão. O token em si só existe no cookie do cliente —
+  /// nunca é armazenado em texto puro (mesmo padrão do código de denúncia).
+  tokenHash        String    @unique
   createdAt        DateTime  @default(now())
   expiresAt        DateTime
   revokedAt        DateTime?
@@ -219,14 +226,14 @@ enum ContentStatus {
 }
 
 model ContentPage {
-  id                String        @id @default(uuid())
-  slug              String        @unique
-  title             String
-  status            ContentStatus @default(DRAFT)
-  createdByUserId   String
-  createdAt         DateTime      @default(now())
-  updatedAt         DateTime      @updatedAt
-  publishedAt       DateTime?
+  id              String        @id @default(uuid())
+  slug            String        @unique
+  title           String
+  status          ContentStatus @default(DRAFT)
+  createdByUserId String
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  publishedAt     DateTime?
 
   revisions   ContentRevision[]
   seoMetadata SeoMetadata?
@@ -235,14 +242,14 @@ model ContentPage {
 }
 
 model ContentRevision {
-  id             String      @id @default(uuid())
-  pageId         String
-  page           ContentPage @relation(fields: [pageId], references: [id])
-  body           Json
-  authorUserId   String
-  createdAt      DateTime    @default(now())
+  id               String      @id @default(uuid())
+  pageId           String
+  page             ContentPage @relation(fields: [pageId], references: [id])
+  body             Json
+  authorUserId     String
+  createdAt        DateTime    @default(now())
   approvedByUserId String?
-  approvedAt     DateTime?
+  approvedAt       DateTime?
 
   @@schema("content")
 }
@@ -300,14 +307,14 @@ model Menu {
 }
 
 model MenuItem {
-  id       String    @id @default(uuid())
+  id       String     @id @default(uuid())
   menuId   String
-  menu     Menu      @relation(fields: [menuId], references: [id])
+  menu     Menu       @relation(fields: [menuId], references: [id])
   label    String
   url      String
-  order    Int       @default(0)
+  order    Int        @default(0)
   parentId String?
-  parent   MenuItem? @relation("MenuItemChildren", fields: [parentId], references: [id])
+  parent   MenuItem?  @relation("MenuItemChildren", fields: [parentId], references: [id])
   children MenuItem[] @relation("MenuItemChildren")
 
   @@schema("content")
@@ -348,10 +355,10 @@ model Partner {
 }
 
 model Testimonial {
-  id       String  @id @default(uuid())
+  id         String  @id @default(uuid())
   authorName String
-  body     String
-  approved Boolean @default(false)
+  body       String
+  approved   Boolean @default(false)
 
   @@schema("content")
 }
@@ -416,45 +423,45 @@ model ContestOrganization {
 }
 
 model Contest {
-  id                     String              @id @default(uuid())
-  slug                   String              @unique
-  title                  String
-  organizationId         String
-  organization           ContestOrganization @relation(fields: [organizationId], references: [id])
-  status                 ContestStatus       @default(DRAFT)
-  shortDescription       String
-  vacancies              Int?
-  educationLevel         String?
-  registrationOpensAt    DateTime?
-  registrationClosesAt   DateTime?
-  examDate               DateTime?
-  feeAmountCents         Int?
-  createdByUserId        String
-  createdAt              DateTime            @default(now())
-  updatedAt              DateTime            @updatedAt
-  publishedAt            DateTime?
+  id                   String              @id @default(uuid())
+  slug                 String              @unique
+  title                String
+  organizationId       String
+  organization         ContestOrganization @relation(fields: [organizationId], references: [id])
+  status               ContestStatus       @default(DRAFT)
+  shortDescription     String
+  vacancies            Int?
+  educationLevel       String?
+  registrationOpensAt  DateTime?
+  registrationClosesAt DateTime?
+  examDate             DateTime?
+  feeAmountCents       Int?
+  createdByUserId      String
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+  publishedAt          DateTime?
 
-  stages              ContestStage[]
-  milestones          ContestMilestone[]
-  positions           ContestPosition[]
-  locations           ContestLocation[]
-  documents           ContestDocument[]
-  announcements       ContestAnnouncement[]
-  faqs                ContestFaq[]
-  serviceLinks        ContestServiceLink[]
+  stages                  ContestStage[]
+  milestones              ContestMilestone[]
+  positions               ContestPosition[]
+  locations               ContestLocation[]
+  documents               ContestDocument[]
+  announcements           ContestAnnouncement[]
+  faqs                    ContestFaq[]
+  serviceLinks            ContestServiceLink[]
   candidateProviderConfig CandidateProviderConfig?
-  subscriptions       ContestSubscription[]
-  publicationApprovals ContestPublicationApproval[]
+  subscriptions           ContestSubscription[]
+  publicationApprovals    ContestPublicationApproval[]
 
   @@schema("contests")
 }
 
 model ContestStage {
-  id        String   @id @default(uuid())
+  id        String  @id @default(uuid())
   contestId String
-  contest   Contest  @relation(fields: [contestId], references: [id])
+  contest   Contest @relation(fields: [contestId], references: [id])
   name      String
-  order     Int      @default(0)
+  order     Int     @default(0)
 
   milestones ContestMilestone[]
 
@@ -498,12 +505,12 @@ model ContestLocation {
 }
 
 model ContestDocument {
-  id                String   @id @default(uuid())
-  contestId         String
-  contest           Contest  @relation(fields: [contestId], references: [id])
-  kind              DocumentKind
-  currentVersionId  String?  @unique
-  createdAt         DateTime @default(now())
+  id               String       @id @default(uuid())
+  contestId        String
+  contest          Contest      @relation(fields: [contestId], references: [id])
+  kind             DocumentKind
+  currentVersionId String?      @unique
+  createdAt        DateTime     @default(now())
 
   versions DocumentVersion[] @relation("DocumentVersions")
 
@@ -530,14 +537,14 @@ model DocumentVersion {
 }
 
 model ContestAnnouncement {
-  id           String   @id @default(uuid())
+  id           String    @id @default(uuid())
   contestId    String
-  contest      Contest  @relation(fields: [contestId], references: [id])
+  contest      Contest   @relation(fields: [contestId], references: [id])
   title        String
   body         String
   authorUserId String
   publishedAt  DateTime?
-  createdAt    DateTime @default(now())
+  createdAt    DateTime  @default(now())
 
   @@schema("contests")
 }
@@ -554,36 +561,36 @@ model ContestFaq {
 }
 
 model ContestServiceLink {
-  id             String    @id @default(uuid())
-  contestId      String
-  contest        Contest   @relation(fields: [contestId], references: [id])
-  label          String
-  url            String
-  healthStatus   String?
-  lastCheckedAt  DateTime?
+  id            String    @id @default(uuid())
+  contestId     String
+  contest       Contest   @relation(fields: [contestId], references: [id])
+  label         String
+  url           String
+  healthStatus  String?
+  lastCheckedAt DateTime?
 
   @@schema("contests")
 }
 
 model CandidateProviderConfig {
-  id                       String  @id @default(uuid())
-  contestId                String  @unique
-  contest                  Contest @relation(fields: [contestId], references: [id])
-  providerKey              String
-  signInUrlOverride        String?
-  registrationUrlOverride  String?
+  id                      String  @id @default(uuid())
+  contestId               String  @unique
+  contest                 Contest @relation(fields: [contestId], references: [id])
+  providerKey             String
+  signInUrlOverride       String?
+  registrationUrlOverride String?
 
   @@schema("contests")
 }
 
 model ContestSubscription {
-  id              String              @id @default(uuid())
-  contestId       String
-  contest         Contest             @relation(fields: [contestId], references: [id])
-  contactEmail    String
-  channel         SubscriptionChannel
-  consentGivenAt  DateTime
-  createdAt       DateTime            @default(now())
+  id             String              @id @default(uuid())
+  contestId      String
+  contest        Contest             @relation(fields: [contestId], references: [id])
+  contactEmail   String
+  channel        SubscriptionChannel
+  consentGivenAt DateTime
+  createdAt      DateTime            @default(now())
 
   @@schema("contests")
 }
@@ -672,11 +679,11 @@ enum IntegrationDeliveryStatus {
 }
 
 model Contact {
-  id       String  @id @default(uuid())
-  name     String
-  email    String
-  phone    String?
-  cpfHash  String?
+  id        String   @id @default(uuid())
+  name      String
+  email     String
+  phone     String?
+  cpfHash   String?
   createdAt DateTime @default(now())
 
   tickets Ticket[]
@@ -706,31 +713,31 @@ model SlaPolicy {
 }
 
 model Ticket {
-  id              String         @id @default(uuid())
-  protocol        String         @unique
-  contactId       String
-  contact         Contact        @relation(fields: [contactId], references: [id])
+  id             String         @id @default(uuid())
+  protocol       String         @unique
+  contactId      String
+  contact        Contact        @relation(fields: [contactId], references: [id])
   // Referência lógica ao domínio "contests" — sem FK de banco (ver nota no topo do arquivo).
-  contestId       String?
-  queueId         String
-  queue           Queue          @relation(fields: [queueId], references: [id])
-  channel         TicketChannel
-  status          TicketStatus   @default(NEW)
-  priority        TicketPriority @default(NORMAL)
-  subject         String
-  slaPolicyId     String?
-  slaPolicy       SlaPolicy?     @relation(fields: [slaPolicyId], references: [id])
-  assignedUserId  String?
-  createdAt       DateTime       @default(now())
-  closedAt        DateTime?
-  reopenedAt      DateTime?
+  contestId      String?
+  queueId        String
+  queue          Queue          @relation(fields: [queueId], references: [id])
+  channel        TicketChannel
+  status         TicketStatus   @default(NEW)
+  priority       TicketPriority @default(NORMAL)
+  subject        String
+  slaPolicyId    String?
+  slaPolicy      SlaPolicy?     @relation(fields: [slaPolicyId], references: [id])
+  assignedUserId String?
+  createdAt      DateTime       @default(now())
+  closedAt       DateTime?
+  reopenedAt     DateTime?
 
-  conversations Conversation[]
-  assignments   Assignment[]
-  slaEvents     SlaEvent[]
-  internalNotes InternalNote[]
-  attachments   Attachment[]
-  satisfactionSurvey SatisfactionSurvey?
+  conversations         Conversation[]
+  assignments           Assignment[]
+  slaEvents             SlaEvent[]
+  internalNotes         InternalNote[]
+  attachments           Attachment[]
+  satisfactionSurvey    SatisfactionSurvey?
   integrationDeliveries IntegrationDelivery[]
 
   @@schema("service")
@@ -764,14 +771,14 @@ model Message {
 }
 
 model Assignment {
-  id              String    @id @default(uuid())
-  ticketId        String
-  ticket          Ticket    @relation(fields: [ticketId], references: [id])
-  userId          String
+  id               String    @id @default(uuid())
+  ticketId         String
+  ticket           Ticket    @relation(fields: [ticketId], references: [id])
+  userId           String
   assignedByUserId String
-  assignedAt      DateTime  @default(now())
-  releasedAt      DateTime?
-  justification   String?
+  assignedAt       DateTime  @default(now())
+  releasedAt       DateTime?
+  justification    String?
 
   @@schema("service")
 }
@@ -798,15 +805,15 @@ model InternalNote {
 }
 
 model Attachment {
-  id             String    @id @default(uuid())
-  messageId      String?
-  message        Message?  @relation(fields: [messageId], references: [id])
-  ticketId       String?
-  ticket         Ticket?   @relation(fields: [ticketId], references: [id])
-  objectKey      String
-  mimeType       String
-  sizeBytes      Int
-  createdAt      DateTime  @default(now())
+  id        String   @id @default(uuid())
+  messageId String?
+  message   Message? @relation(fields: [messageId], references: [id])
+  ticketId  String?
+  ticket    Ticket?  @relation(fields: [ticketId], references: [id])
+  objectKey String
+  mimeType  String
+  sizeBytes Int
+  createdAt DateTime @default(now())
 
   @@schema("service")
 }
@@ -949,8 +956,8 @@ model WhistleblowingCategory {
   name        String
   description String?
 
-  cases            WhistleblowingCase[]
-  retentionPolicy  WhistleblowingRetentionPolicy?
+  cases           WhistleblowingCase[]
+  retentionPolicy WhistleblowingRetentionPolicy?
 
   @@schema("whistleblowing")
 }
@@ -966,29 +973,31 @@ model WhistleblowingCase {
   createdAt   DateTime                 @default(now())
   closedAt    DateTime?
 
-  credential     WhistleblowingCredential?
-  parties        WhistleblowingParty[]
-  messages       WhistleblowingMessage[]
-  evidence       WhistleblowingEvidence[]
-  assignments    WhistleblowingAssignment[]
-  statusHistory  WhistleblowingStatusHistory[]
-  decision       WhistleblowingDecision?
-  accessEvents   WhistleblowingAccessEvent[]
+  credential    WhistleblowingCredential?
+  parties       WhistleblowingParty[]
+  messages      WhistleblowingMessage[]
+  evidence      WhistleblowingEvidence[]
+  assignments   WhistleblowingAssignment[]
+  statusHistory WhistleblowingStatusHistory[]
+  decision      WhistleblowingDecision?
+  accessEvents  WhistleblowingAccessEvent[]
 
   @@schema("whistleblowing")
 }
 
-/** Nunca armazenar o código em texto puro — apenas hash (Argon2id) + comparação em tempo
- * constante na camada de aplicação. Ver docs/SECURITY_AND_PRIVACY.md. */
+/**
+ * Nunca armazenar o código em texto puro — apenas hash (Argon2id) + comparação em tempo
+ * constante na camada de aplicação. Ver docs/SECURITY_AND_PRIVACY.md.
+ */
 model WhistleblowingCredential {
-  id             String    @id @default(uuid())
-  caseId         String    @unique
+  id             String             @id @default(uuid())
+  caseId         String             @unique
   case           WhistleblowingCase @relation(fields: [caseId], references: [id])
   codeHash       String
-  algorithm      String    @default("argon2id")
-  failedAttempts Int       @default(0)
+  algorithm      String             @default("argon2id")
+  failedAttempts Int                @default(0)
   lockedUntil    DateTime?
-  createdAt      DateTime  @default(now())
+  createdAt      DateTime           @default(now())
 
   @@schema("whistleblowing")
 }
@@ -1016,62 +1025,64 @@ model WhistleblowingMessage {
 }
 
 model WhistleblowingEvidence {
-  id                 String   @id @default(uuid())
+  id                 String             @id @default(uuid())
   caseId             String
   case               WhistleblowingCase @relation(fields: [caseId], references: [id])
   objectKey          String
   checksumSha256     String
   chainOfCustodyNote String?
-  createdAt          DateTime @default(now())
+  createdAt          DateTime           @default(now())
 
   @@schema("whistleblowing")
 }
 
 model WhistleblowingAssignment {
-  id               String   @id @default(uuid())
+  id               String             @id @default(uuid())
   caseId           String
   case             WhistleblowingCase @relation(fields: [caseId], references: [id])
   analystUserId    String
-  assignedAt       DateTime @default(now())
-  restrictedAccess Boolean  @default(false)
+  assignedAt       DateTime           @default(now())
+  restrictedAccess Boolean            @default(false)
 
   @@schema("whistleblowing")
 }
 
 model WhistleblowingStatusHistory {
-  id            String                    @id @default(uuid())
-  caseId        String
-  case          WhistleblowingCase        @relation(fields: [caseId], references: [id])
-  fromStatus    WhistleblowingCaseStatus?
-  toStatus      WhistleblowingCaseStatus
+  id              String                    @id @default(uuid())
+  caseId          String
+  case            WhistleblowingCase        @relation(fields: [caseId], references: [id])
+  fromStatus      WhistleblowingCaseStatus?
+  toStatus        WhistleblowingCaseStatus
   changedByUserId String
-  changedAt     DateTime                  @default(now())
-  justification String?
+  changedAt       DateTime                  @default(now())
+  justification   String?
 
   @@schema("whistleblowing")
 }
 
 model WhistleblowingDecision {
-  id               String   @id @default(uuid())
-  caseId           String   @unique
+  id               String             @id @default(uuid())
+  caseId           String             @unique
   case             WhistleblowingCase @relation(fields: [caseId], references: [id])
   summary          String
   decidedByUserId  String
-  decidedAt        DateTime @default(now())
+  decidedAt        DateTime           @default(now())
   reviewedByUserId String?
 
   @@schema("whistleblowing")
 }
 
-/** Trilha de acesso específica do domínio (`CASE_ACCESSED`) — adicional ao AuditEvent geral. */
+/**
+ * Trilha de acesso específica do domínio (`CASE_ACCESSED`) — adicional ao AuditEvent geral.
+ */
 model WhistleblowingAccessEvent {
-  id             String                     @id @default(uuid())
-  caseId         String
-  case           WhistleblowingCase         @relation(fields: [caseId], references: [id])
+  id               String                     @id @default(uuid())
+  caseId           String
+  case             WhistleblowingCase         @relation(fields: [caseId], references: [id])
   accessedByUserId String
-  justification  String
-  accessedAt     DateTime                   @default(now())
-  action         WhistleblowingAccessAction
+  justification    String
+  accessedAt       DateTime                   @default(now())
+  action           WhistleblowingAccessAction
 
   @@schema("whistleblowing")
 }
@@ -1151,34 +1162,34 @@ model AdvertisingContract {
 }
 
 model Campaign {
-  id              String              @id @default(uuid())
+  id              String               @id @default(uuid())
   advertiserId    String
-  advertiser      Advertiser          @relation(fields: [advertiserId], references: [id])
+  advertiser      Advertiser           @relation(fields: [advertiserId], references: [id])
   contractId      String?
   contract        AdvertisingContract? @relation(fields: [contractId], references: [id])
   name            String
-  status          CampaignStatus      @default(DRAFT)
+  status          CampaignStatus       @default(DRAFT)
   createdByUserId String
-  createdAt       DateTime            @default(now())
+  createdAt       DateTime             @default(now())
 
-  creatives           Creative[]
-  campaignPlacements  CampaignPlacement[]
-  schedule            CampaignSchedule?
-  approval            CampaignApproval?
+  creatives            Creative[]
+  campaignPlacements   CampaignPlacement[]
+  schedule             CampaignSchedule?
+  approval             CampaignApproval?
   impressionAggregates ImpressionAggregate[]
-  clickAggregates     ClickAggregate[]
+  clickAggregates      ClickAggregate[]
 
   @@schema("advertising")
 }
 
 model Creative {
-  id              String         @id @default(uuid())
-  campaignId      String
-  campaign        Campaign       @relation(fields: [campaignId], references: [id])
-  format          CreativeFormat
-  objectKey       String
-  destinationUrl  String
-  approved        Boolean        @default(false)
+  id             String         @id @default(uuid())
+  campaignId     String
+  campaign       Campaign       @relation(fields: [campaignId], references: [id])
+  format         CreativeFormat
+  objectKey      String
+  destinationUrl String
+  approved       Boolean        @default(false)
 
   @@schema("advertising")
 }
@@ -1206,25 +1217,25 @@ model CampaignPlacement {
 }
 
 model CampaignSchedule {
-  id              String       @id @default(uuid())
-  campaignId      String       @unique
-  campaign        Campaign     @relation(fields: [campaignId], references: [id])
-  startsAt        DateTime
-  endsAt          DateTime
-  frequencyCapId  String?
-  frequencyCap    FrequencyCap? @relation(fields: [frequencyCapId], references: [id])
+  id             String        @id @default(uuid())
+  campaignId     String        @unique
+  campaign       Campaign      @relation(fields: [campaignId], references: [id])
+  startsAt       DateTime
+  endsAt         DateTime
+  frequencyCapId String?
+  frequencyCap   FrequencyCap? @relation(fields: [frequencyCapId], references: [id])
 
   @@schema("advertising")
 }
 
 model CampaignApproval {
-  id                String    @id @default(uuid())
-  campaignId        String    @unique
-  campaign          Campaign  @relation(fields: [campaignId], references: [id])
-  reviewerUserId    String
-  complianceUserId  String?
-  decidedAt         DateTime?
-  approved          Boolean?
+  id               String    @id @default(uuid())
+  campaignId       String    @unique
+  campaign         Campaign  @relation(fields: [campaignId], references: [id])
+  reviewerUserId   String
+  complianceUserId String?
+  decidedAt        DateTime?
+  approved         Boolean?
 
   @@schema("advertising")
 }
@@ -1346,7 +1357,9 @@ enum IncidentStatus {
   @@schema("governance")
 }
 
-/** Trilha de auditoria geral — imutável pela interface comum (seção 10.8). */
+/**
+ * Trilha de auditoria geral — imutável pela interface comum (seção 10.8).
+ */
 model AuditEvent {
   id               String      @id @default(uuid())
   actorUserId      String?
@@ -1379,7 +1392,9 @@ model IntegrationEvent {
   @@schema("governance")
 }
 
-/** Outbox transacional — regra 6.3 (eventos de domínio + transactional outbox). */
+/**
+ * Outbox transacional — regra 6.3 (eventos de domínio + transactional outbox).
+ */
 model OutboxEvent {
   id            String    @id @default(uuid())
   aggregateType String
@@ -1443,12 +1458,12 @@ model DataSubjectRequest {
 }
 
 model Incident {
-  id          String           @id @default(uuid())
-  title       String
-  severity    IncidentSeverity
-  status      IncidentStatus   @default(OPEN)
-  detectedAt  DateTime         @default(now())
-  resolvedAt  DateTime?
+  id         String           @id @default(uuid())
+  title      String
+  severity   IncidentSeverity
+  status     IncidentStatus   @default(OPEN)
+  detectedAt DateTime         @default(now())
+  resolvedAt DateTime?
 
   @@schema("governance")
 }

@@ -15,7 +15,9 @@
     "build": "tsc -p tsconfig.json",
     "clean": "rm -rf dist"
   },
-  "dependencies": {},
+  "dependencies": {
+    "argon2": "^0.41.1"
+  },
   "devDependencies": {
     "@selecon/config": "workspace:*",
     "@types/node": "^22.10.5",

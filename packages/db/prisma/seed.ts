@@ -2,50 +2,124 @@
  * Seed de desenvolvimento — dados 100% fictícios, sem qualquer semelhança com pessoas,
  * concursos ou casos reais (regra 3.11 e seção 15.4 do prompt mestre). Nunca rodar contra
  * um banco de produção.
+ *
+ * Usuários criados exigem troca de senha no primeiro login (mustChangePassword=true).
+ * As senhas geradas são impressas uma única vez no console — não ficam em nenhum
+ * arquivo do repositório (regra 27 do prompt mestre de infraestrutura).
  */
+import { generateTemporaryPassword, hashPassword } from "@selecon/auth";
 import { PrismaClient } from "../generated/client/index.js";
 
 const prisma = new PrismaClient();
 
+const ROLES = [
+  { key: "PORTAL_ADMIN", description: "Administrador geral do portal" },
+  { key: "CONTENT_ADMIN", description: "Administrador de conteúdo institucional" },
+  { key: "CONTEST_ADMIN", description: "Administrador de concursos" },
+  { key: "CONTEST_EDITOR", description: "Editor de concursos" },
+  { key: "SERVICE_SUPERVISOR", description: "Supervisor de atendimento" },
+  { key: "SERVICE_AGENT", description: "Atendente" },
+  { key: "INTEGRITY_ADMIN", description: "Administrador do canal de integridade/denúncias" },
+  { key: "INTEGRITY_ANALYST", description: "Analista de integridade" },
+  { key: "ADVERTISING_ADMIN", description: "Administrador de anúncios e campanhas" },
+  { key: "AUDITOR", description: "Auditor (somente leitura da trilha de auditoria)" },
+  { key: "READ_ONLY", description: "Consulta (somente leitura)" },
+] as const;
+
+interface SeedUserSpec {
+  email: string;
+  displayName: string;
+  roleKey: (typeof ROLES)[number]["key"];
+}
+
+const SEED_USERS: SeedUserSpec[] = [
+  {
+    email: "admin.demo@selecon.example",
+    displayName: "Administrador Demo",
+    roleKey: "PORTAL_ADMIN",
+  },
+  {
+    email: "conteudo.demo@selecon.example",
+    displayName: "Editor de Conteúdo Demo",
+    roleKey: "CONTENT_ADMIN",
+  },
+  {
+    email: "concursos.demo@selecon.example",
+    displayName: "Editor de Concursos Demo",
+    roleKey: "CONTEST_EDITOR",
+  },
+  {
+    email: "atendimento.demo@selecon.example",
+    displayName: "Atendente Demo",
+    roleKey: "SERVICE_AGENT",
+  },
+  {
+    email: "supervisor.demo@selecon.example",
+    displayName: "Supervisor de Atendimento Demo",
+    roleKey: "SERVICE_SUPERVISOR",
+  },
+  {
+    email: "integridade.demo@selecon.example",
+    displayName: "Analista de Integridade Demo",
+    roleKey: "INTEGRITY_ANALYST",
+  },
+  {
+    email: "comercial.demo@selecon.example",
+    displayName: "Administrador Comercial Demo",
+    roleKey: "ADVERTISING_ADMIN",
+  },
+  { email: "auditor.demo@selecon.example", displayName: "Auditor Demo", roleKey: "AUDITOR" },
+  {
+    email: "consulta.demo@selecon.example",
+    displayName: "Usuário de Consulta Demo",
+    roleKey: "READ_ONLY",
+  },
+];
+
 async function main() {
   console.warn("Seeding banco de desenvolvimento com dados fictícios...");
 
-  // --- Identidade ---
-  const adminRole = await prisma.role.upsert({
-    where: { key: "PORTAL_ADMIN" },
-    update: {},
-    create: { key: "PORTAL_ADMIN", description: "Administrador geral do portal (seed)" },
-  });
+  const roleByKey = new Map<string, { id: string }>();
+  for (const role of ROLES) {
+    const created = await prisma.role.upsert({
+      where: { key: role.key },
+      update: {},
+      create: role,
+    });
+    roleByKey.set(role.key, created);
+  }
 
-  const contestEditorRole = await prisma.role.upsert({
-    where: { key: "CONTEST_EDITOR" },
-    update: {},
-    create: { key: "CONTEST_EDITOR", description: "Editor de concursos (seed)" },
-  });
+  const credentials: { email: string; password: string }[] = [];
+  const userByEmail = new Map<string, { id: string }>();
 
-  const adminUser = await prisma.user.upsert({
-    where: { email: "admin.demo@selecon.example" },
-    update: {},
-    create: {
-      email: "admin.demo@selecon.example",
-      displayName: "Administrador Demo",
-      userRoles: {
-        create: { roleId: adminRole.id, grantedByUserId: "seed-script" },
+  for (const spec of SEED_USERS) {
+    const existing = await prisma.user.findUnique({ where: { email: spec.email } });
+    if (existing) {
+      userByEmail.set(spec.email, existing);
+      continue;
+    }
+
+    const password = generateTemporaryPassword();
+    const passwordHash = await hashPassword(password);
+    const role = roleByKey.get(spec.roleKey);
+    if (!role) throw new Error(`Papel não encontrado no seed: ${spec.roleKey}`);
+
+    const user = await prisma.user.create({
+      data: {
+        email: spec.email,
+        displayName: spec.displayName,
+        passwordHash,
+        mustChangePassword: true,
+        userRoles: {
+          create: { roleId: role.id, grantedByUserId: "seed-script" },
+        },
       },
-    },
-  });
+    });
+    userByEmail.set(spec.email, user);
+    credentials.push({ email: spec.email, password });
+  }
 
-  const editorUser = await prisma.user.upsert({
-    where: { email: "editor.demo@selecon.example" },
-    update: {},
-    create: {
-      email: "editor.demo@selecon.example",
-      displayName: "Editor de Concursos Demo",
-      userRoles: {
-        create: { roleId: contestEditorRole.id, grantedByUserId: "seed-script" },
-      },
-    },
-  });
+  const editorUser = userByEmail.get("concursos.demo@selecon.example")!;
 
   // --- Concursos ---
   const organization = await prisma.contestOrganization.upsert({
@@ -155,7 +229,17 @@ async function main() {
   });
 
   console.warn("Seed concluído.");
-  console.warn(`Usuários criados: ${adminUser.email}, ${editorUser.email}`);
+  if (credentials.length > 0) {
+    console.warn("");
+    console.warn("=== CREDENCIAIS DE DEV GERADAS (exibidas uma única vez) ===");
+    for (const cred of credentials) {
+      console.warn(`  ${cred.email} / ${cred.password}`);
+    }
+    console.warn("Troca de senha obrigatória no primeiro login.");
+    console.warn("=============================================================");
+  } else {
+    console.warn("Usuários já existiam — nenhuma credencial nova foi gerada.");
+  }
 }
 
 main()

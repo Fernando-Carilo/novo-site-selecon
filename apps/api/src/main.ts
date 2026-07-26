@@ -1,4 +1,5 @@
 import "reflect-metadata";
+import cookie from "@fastify/cookie";
 import helmet from "@fastify/helmet";
 import { NestFactory } from "@nestjs/core";
 import { FastifyAdapter, type NestFastifyApplication } from "@nestjs/platform-fastify";
@@ -25,6 +26,16 @@ async function bootstrap() {
         objectSrc: ["'none'"],
       },
     },
+  });
+
+  await app.register(cookie);
+
+  // O frontend (apps/web) fala com a API via proxy server-to-server (mesma origem
+  // do ponto de vista do navegador) — ver apps/web/app/api/[...path]/route.ts.
+  // CORS aqui é apenas defesa em profundidade para chamadas diretas em dev/debug.
+  app.enableCors({
+    origin: env.WEB_ORIGIN,
+    credentials: true,
   });
 
   const openApiConfig = new DocumentBuilder()
