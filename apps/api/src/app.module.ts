@@ -3,6 +3,7 @@ import { APP_GUARD } from "@nestjs/core";
 import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler";
 import { AuditModule } from "./audit/audit.module.js";
 import { AuthModule } from "./auth/auth.module.js";
+import { ContestsModule } from "./contests/contests.module.js";
 import { HealthModule } from "./health/health.module.js";
 import { IntegrationsModule } from "./integrations/integrations.module.js";
 
@@ -13,6 +14,7 @@ import { IntegrationsModule } from "./integrations/integrations.module.js";
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 120 }]),
     AuditModule,
     AuthModule,
+    ContestsModule,
     IntegrationsModule,
     HealthModule,
   ],

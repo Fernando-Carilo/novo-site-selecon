@@ -61,3 +61,83 @@ export const contestPublicationApprovalSchema = z
     path: ["approverUserId"],
   });
 export type ContestPublicationApproval = z.infer<typeof contestPublicationApprovalSchema>;
+
+// --- Administração ---
+
+export const createContestRequestSchema = z.object({
+  title: z.string().min(3).max(300),
+  slug: z
+    .string()
+    .min(3)
+    .max(150)
+    .regex(/^[a-z0-9]+(-[a-z0-9]+)*$/, "Use apenas letras minúsculas, números e hífens"),
+  organizationId: z.string().uuid(),
+  shortDescription: z.string().min(1).max(300),
+  vacancies: z.number().int().nonnegative().optional(),
+  educationLevel: z.string().optional(),
+  registrationOpensAt: z.string().datetime().optional(),
+  registrationClosesAt: z.string().datetime().optional(),
+  examDate: z.string().datetime().optional(),
+  feeAmountCents: z.number().int().nonnegative().optional(),
+});
+export type CreateContestRequest = z.infer<typeof createContestRequestSchema>;
+
+export const updateContestRequestSchema = createContestRequestSchema.partial().omit({
+  slug: true,
+});
+export type UpdateContestRequest = z.infer<typeof updateContestRequestSchema>;
+
+export const publishContestRequestSchema = z.object({
+  scheduledFor: z.string().datetime().optional(),
+});
+export type PublishContestRequest = z.infer<typeof publishContestRequestSchema>;
+
+export const contestOrganizationSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string(),
+});
+export type ContestOrganizationDto = z.infer<typeof contestOrganizationSchema>;
+
+export const contestFaqSchema = z.object({
+  id: z.string().uuid(),
+  question: z.string(),
+  answer: z.string(),
+  order: z.number().int(),
+});
+export type ContestFaqDto = z.infer<typeof contestFaqSchema>;
+
+export const createContestFaqRequestSchema = z.object({
+  question: z.string().min(1).max(500),
+  answer: z.string().min(1).max(5000),
+  order: z.number().int().nonnegative().default(0),
+});
+export type CreateContestFaqRequest = z.infer<typeof createContestFaqRequestSchema>;
+
+export const contestPositionSchema = z.object({
+  id: z.string().uuid(),
+  title: z.string(),
+  vacancies: z.number().int(),
+  requirements: z.string(),
+  salaryCents: z.number().int().nullable(),
+});
+export type ContestPositionDto = z.infer<typeof contestPositionSchema>;
+
+export const createContestPositionRequestSchema = z.object({
+  title: z.string().min(1).max(200),
+  vacancies: z.number().int().nonnegative(),
+  requirements: z.string().min(1).max(2000),
+  salaryCents: z.number().int().nonnegative().optional(),
+});
+export type CreateContestPositionRequest = z.infer<typeof createContestPositionRequestSchema>;
+
+export const contestDetailSchema = contestSummarySchema.extend({
+  organizationId: z.string().uuid(),
+  examDate: z.string().datetime().nullable(),
+  feeAmountCents: z.number().int().nullable(),
+  createdByUserId: z.string().uuid(),
+  publishedAt: z.string().datetime().nullable(),
+  createdAt: z.string().datetime(),
+  faqs: z.array(contestFaqSchema),
+  positions: z.array(contestPositionSchema),
+});
+export type ContestDetail = z.infer<typeof contestDetailSchema>;
