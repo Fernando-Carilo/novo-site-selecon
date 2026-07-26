@@ -11,7 +11,7 @@ import type {
 } from "@selecon/contracts";
 import { prisma } from "@selecon/db";
 import { AuditService } from "../audit/audit.service.js";
-import { generateProtocol } from "./generate-protocol.js";
+import { generateProtocol } from "../common/generate-protocol.js";
 import { toTicketDetail, toTicketPublicView, toTicketSummary } from "./tickets.mapper.js";
 
 const DEFAULT_QUEUE_KEY = "atendimento-geral";

@@ -8,6 +8,7 @@ const NAV_ITEMS = [
   { href: "/admin", label: "Command Center" },
   { href: "/admin/concursos", label: "Concursos" },
   { href: "/admin/atendimento", label: "Atendimento" },
+  { href: "/admin/denuncias", label: "Canal de denúncias" },
 ];
 
 export default async function AdminDashboardLayout({ children }: { children: ReactNode }) {

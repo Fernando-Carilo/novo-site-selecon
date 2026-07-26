@@ -7,6 +7,7 @@ import { ContestsModule } from "./contests/contests.module.js";
 import { HealthModule } from "./health/health.module.js";
 import { IntegrationsModule } from "./integrations/integrations.module.js";
 import { TicketsModule } from "./tickets/tickets.module.js";
+import { WhistleblowingModule } from "./whistleblowing/whistleblowing.module.js";
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { TicketsModule } from "./tickets/tickets.module.js";
     AuthModule,
     ContestsModule,
     TicketsModule,
+    WhistleblowingModule,
     IntegrationsModule,
     HealthModule,
   ],

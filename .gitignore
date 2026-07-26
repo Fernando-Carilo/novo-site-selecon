@@ -34,3 +34,6 @@ packages/db/generated/
 
 # Docker volumes (local dev data)
 .docker-data/
+
+# Redis local dump (gerado pelo redis-server em desenvolvimento)
+dump.rdb

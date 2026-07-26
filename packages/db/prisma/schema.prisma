@@ -963,15 +963,20 @@ model WhistleblowingCategory {
 }
 
 model WhistleblowingCase {
-  id          String                   @id @default(uuid())
-  protocol    String                   @unique
-  categoryId  String
-  category    WhistleblowingCategory   @relation(fields: [categoryId], references: [id])
-  status      WhistleblowingCaseStatus @default(RECEIVED)
-  riskLevel   WhistleblowingRiskLevel?
-  isAnonymous Boolean
-  createdAt   DateTime                 @default(now())
-  closedAt    DateTime?
+  id                        String                   @id @default(uuid())
+  protocol                  String                   @unique
+  categoryId                String
+  category                  WhistleblowingCategory   @relation(fields: [categoryId], references: [id])
+  status                    WhistleblowingCaseStatus @default(RECEIVED)
+  riskLevel                 WhistleblowingRiskLevel?
+  isAnonymous               Boolean
+  /// Texto livre descrevendo pessoas envolvidas — dado sensível, nunca exposto fora
+  /// do domínio de denúncias (ver ADR-0003).
+  involvedPeopleDescription String?
+  location                  String?
+  incidentDate              DateTime?
+  createdAt                 DateTime                 @default(now())
+  closedAt                  DateTime?
 
   credential    WhistleblowingCredential?
   parties       WhistleblowingParty[]

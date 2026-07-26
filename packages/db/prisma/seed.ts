@@ -64,6 +64,11 @@ const SEED_USERS: SeedUserSpec[] = [
     roleKey: "INTEGRITY_ANALYST",
   },
   {
+    email: "integridade.admin.demo@selecon.example",
+    displayName: "Administrador de Integridade Demo",
+    roleKey: "INTEGRITY_ADMIN",
+  },
+  {
     email: "comercial.demo@selecon.example",
     displayName: "Administrador Comercial Demo",
     roleKey: "ADVERTISING_ADMIN",
