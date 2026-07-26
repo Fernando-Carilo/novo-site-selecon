@@ -10,6 +10,7 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "seed:e2e": "tsx scripts/seed-e2e-users.ts",
     "clean": "rm -rf dist"
   },
   "dependencies": {
