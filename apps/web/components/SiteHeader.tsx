@@ -1,9 +1,10 @@
 import Link from "next/link";
 
-// Menu completo (O Instituto, Notícias, Fale Conosco) chega nas Fases 2 e 5, quando essas
-// páginas existirem de fato — nenhum item aponta para uma rota inexistente (regra 3.11).
+// Menu completo (O Instituto, Fale Conosco) chega quando essas páginas existirem de fato
+// — nenhum item aponta para uma rota inexistente (regra 3.11).
 const NAV_ITEMS = [
   { href: "/concursos", label: "Concursos" },
+  { href: "/noticias", label: "Notícias" },
   { href: "/atendimento", label: "Atendimento" },
   { href: "/denuncias", label: "Integridade" },
   { href: "/candidato", label: "Área do candidato" },
