@@ -31,6 +31,6 @@ test.describe("Canal de denúncias — registro, consulta e acesso com justifica
       .getByPlaceholder(/verificação de rotina/i)
       .fill("Verificação de rotina do caso para teste E2E automatizado.");
     await page.getByRole("button", { name: "Acessar caso" }).click();
-    await expect(page.getByText("Recebida")).toBeVisible();
+    await expect(page.locator("p.rounded-full", { hasText: "Recebida" })).toBeVisible();
   });
 });

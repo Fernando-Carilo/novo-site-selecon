@@ -42,14 +42,17 @@ export default function AdminTicketsPage() {
   async function handleReply(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!selected) return;
-    const body = new FormData(event.currentTarget).get("body") as string;
+    const formElement = event.currentTarget;
+    const body = new FormData(formElement).get("body") as string;
     try {
       const updated = await apiFetch<TicketDetail>(`/admin/tickets/${selected.id}/messages`, {
         method: "POST",
         body: JSON.stringify({ body }),
       });
       setSelected(updated);
-      event.currentTarget.reset();
+      // `event.currentTarget` é anulado pelo React assim que o handler assíncrono
+      // sofre um `await` — captura-se o elemento antes para poder resetar o form.
+      formElement.reset();
       await loadList();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Falha ao responder");

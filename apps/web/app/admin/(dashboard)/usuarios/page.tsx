@@ -46,7 +46,8 @@ export default function AdminUsersPage() {
   async function handleCreate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
-    const form = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     try {
       const result = await apiFetch<{ user: AdminUserSummary; credential: TemporaryCredential }>(
         "/admin/users",
@@ -61,7 +62,9 @@ export default function AdminUsersPage() {
       );
       setLastCredential(result.credential);
       setShowNewForm(false);
-      event.currentTarget.reset();
+      // `event.currentTarget` é anulado pelo React assim que o handler assíncrono
+      // sofre um `await` — captura-se o elemento antes para poder resetar o form.
+      formElement.reset();
       await load();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Falha ao criar usuário");

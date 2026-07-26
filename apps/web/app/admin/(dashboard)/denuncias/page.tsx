@@ -54,7 +54,8 @@ export default function AdminWhistleblowingPage() {
   async function handleStatusChange(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!selected) return;
-    const form = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     try {
       const updated = await apiFetch<WhistleblowingCaseDetail>(
         `/admin/whistleblowing/cases/${selected.id}/status`,
@@ -67,7 +68,9 @@ export default function AdminWhistleblowingPage() {
         },
       );
       setSelected(updated);
-      event.currentTarget.reset();
+      // `event.currentTarget` é anulado pelo React assim que o handler assíncrono
+      // sofre um `await` — captura-se o elemento antes para poder resetar o form.
+      formElement.reset();
       await loadList();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Falha ao atualizar status");
@@ -77,7 +80,8 @@ export default function AdminWhistleblowingPage() {
   async function handleAddMessage(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!selected) return;
-    const form = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     try {
       const updated = await apiFetch<WhistleblowingCaseDetail>(
         `/admin/whistleblowing/cases/${selected.id}/messages`,
@@ -90,7 +94,9 @@ export default function AdminWhistleblowingPage() {
         },
       );
       setSelected(updated);
-      event.currentTarget.reset();
+      // `event.currentTarget` é anulado pelo React assim que o handler assíncrono
+      // sofre um `await` — captura-se o elemento antes para poder resetar o form.
+      formElement.reset();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Falha ao enviar mensagem");
     }
@@ -99,14 +105,17 @@ export default function AdminWhistleblowingPage() {
   async function handleDecision(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!selected) return;
-    const summary = new FormData(event.currentTarget).get("summary") as string;
+    const formElement = event.currentTarget;
+    const summary = new FormData(formElement).get("summary") as string;
     try {
       const updated = await apiFetch<WhistleblowingCaseDetail>(
         `/admin/whistleblowing/cases/${selected.id}/decision`,
         { method: "POST", body: JSON.stringify({ summary }) },
       );
       setSelected(updated);
-      event.currentTarget.reset();
+      // `event.currentTarget` é anulado pelo React assim que o handler assíncrono
+      // sofre um `await` — captura-se o elemento antes para poder resetar o form.
+      formElement.reset();
       await loadList();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Falha ao registrar decisão");

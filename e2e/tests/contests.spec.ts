@@ -40,7 +40,7 @@ test.describe("Concursos — fluxo completo com separação de funções", () =>
 
     // 20. Conferir auditoria
     await gotoAndReady(page, "/admin/auditoria");
-    await page.getByLabel("Ação").fill("CONTEST_PUBLISHED");
+    await page.getByLabel("Ação", { exact: true }).fill("CONTEST_PUBLISHED");
     await page.getByRole("button", { name: "Filtrar" }).click();
     await expect(page.getByText("CONTEST_PUBLISHED").first()).toBeVisible();
   });

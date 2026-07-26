@@ -7,7 +7,7 @@ test.describe("CMS — publicação de conteúdo", () => {
     const title = `Notícia E2E ${Date.now()}`;
 
     await loginAsAdmin(page, "conteudo.demo@selecon.example");
-    await gotoAndReady(page, "/admin/conteudo");
+    await gotoAndReady(page, "/admin/noticias");
     await page.getByRole("button", { name: "Nova notícia" }).click();
     await page.getByLabel("Slug").fill(slug);
     await page.getByLabel("Título").fill(title);

@@ -8,6 +8,7 @@ import { LogoutButton } from "./logout-button";
 const NAV_ITEMS = [
   { href: "/admin", label: "Command Center" },
   { href: "/admin/conteudo", label: "Conteúdo" },
+  { href: "/admin/noticias", label: "Notícias" },
   { href: "/admin/concursos", label: "Concursos" },
   { href: "/admin/atendimento", label: "Atendimento" },
   { href: "/admin/denuncias", label: "Canal de denúncias" },

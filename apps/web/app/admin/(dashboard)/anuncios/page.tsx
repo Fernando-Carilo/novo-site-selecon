@@ -66,7 +66,8 @@ export default function AdminAdvertisingPage() {
   async function handleCreateCampaign(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
-    const form = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     const placementKeys = form.getAll("placementKeys") as string[];
     try {
       const created = await apiFetch<CampaignDetail>("/admin/advertising/campaigns", {
@@ -87,7 +88,9 @@ export default function AdminAdvertisingPage() {
         }),
       });
       setShowNewForm(false);
-      event.currentTarget.reset();
+      // `event.currentTarget` é anulado pelo React assim que o handler assíncrono
+      // sofre um `await` — captura-se o elemento antes para poder resetar o form.
+      formElement.reset();
       await loadAll();
       setSelected(created);
     } catch (err) {
