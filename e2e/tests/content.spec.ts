@@ -16,7 +16,7 @@ test.describe("CMS — publicação de conteúdo", () => {
 
     await page.locator("tr", { hasText: title }).click();
     await page.getByRole("button", { name: "Publicar" }).click();
-    await expect(page.getByText("Publicado")).toBeVisible();
+    await expect(page.locator("p.rounded-full", { hasText: "Publicado" })).toBeVisible();
 
     await gotoAndReady(page, `/noticias/${slug}`);
     await expect(page.getByRole("heading", { name: title })).toBeVisible();

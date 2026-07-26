@@ -30,7 +30,7 @@ test.describe("Anúncios — criação, revisão e aprovação (compliance)", ()
     await gotoAndReady(page, "/admin/anuncios");
     await page.locator("tr", { hasText: campaignName }).click();
     await page.getByRole("button", { name: "Aprovar revisão" }).click();
-    await expect(page.getByText("Aguardando compliance")).toBeVisible();
+    await expect(page.locator("p.rounded-full", { hasText: "Aguardando compliance" })).toBeVisible();
     await logout(page);
 
     // 18. Executar aprovação de compliance (terceiro ator, diferente do criador e do revisor)
@@ -38,6 +38,6 @@ test.describe("Anúncios — criação, revisão e aprovação (compliance)", ()
     await gotoAndReady(page, "/admin/anuncios");
     await page.locator("tr", { hasText: campaignName }).click();
     await page.getByRole("button", { name: "Aprovar compliance" }).click();
-    await expect(page.getByText("Aprovada")).toBeVisible();
+    await expect(page.locator("p.rounded-full", { hasText: "Aprovada" })).toBeVisible();
   });
 });
