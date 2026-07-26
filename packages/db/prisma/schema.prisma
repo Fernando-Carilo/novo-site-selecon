@@ -1,0 +1,1454 @@
+// Schema Prisma — Portal Integrado Selecon
+// Modelo de dados mínimo da seção 8 do prompt mestre.
+//
+// Decisão de fronteira de módulo (seção 6.2 e 6.3 — "controllers finos", "módulos com
+// fronteiras claras"): referências entre domínios (schemas) diferentes são armazenadas
+// como campos escalares simples (ex.: `contestId String?`), SEM foreign key de banco entre
+// schemas. Apenas relações DENTRO do mesmo domínio usam `@relation` com FK real. Isso evita
+// acoplamento rígido de banco entre módulos que devem evoluir de forma independente — e é
+// especialmente importante para o domínio `whistleblowing`, que deve permanecer isolado
+// mesmo a nível de integridade referencial (ver ADR-0003).
+//
+// Cada `@@schema` corresponde a um schema PostgreSQL segregado.
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  schemas  = ["identity", "content", "contests", "service", "whistleblowing", "advertising", "governance"]
+}
+
+// =============================================================================
+// 8.1 Identidade e acesso — schema "identity"
+// =============================================================================
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+
+  @@schema("identity")
+}
+
+enum IdentityProvider {
+  AZURE_AD
+  LOCAL_DEV
+
+  @@schema("identity")
+}
+
+enum LoginResult {
+  SUCCESS
+  FAILURE
+
+  @@schema("identity")
+}
+
+enum AccessReviewDecision {
+  CONFIRMED
+  REVOKED
+
+  @@schema("identity")
+}
+
+enum ScopeType {
+  CONTEST
+  QUEUE
+  UNIT
+  MODULE
+
+  @@schema("identity")
+}
+
+model User {
+  id            String     @id @default(uuid())
+  email         String     @unique
+  displayName   String
+  status        UserStatus @default(ACTIVE)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  deactivatedAt DateTime?
+
+  identityAccounts IdentityProviderAccount[]
+  userRoles        UserRole[]
+  sessions         Session[]
+  loginEvents      LoginEvent[]
+  privilegedGrants PrivilegedAccessGrant[] @relation("PrivilegedGrantSubject")
+
+  @@schema("identity")
+}
+
+model IdentityProviderAccount {
+  id         String           @id @default(uuid())
+  userId     String
+  user       User             @relation(fields: [userId], references: [id])
+  provider   IdentityProvider
+  externalId String
+  createdAt  DateTime         @default(now())
+
+  @@unique([provider, externalId])
+  @@schema("identity")
+}
+
+model Role {
+  id          String @id @default(uuid())
+  key         String @unique
+  description String
+
+  rolePermissions RolePermission[]
+  userRoles       UserRole[]
+
+  @@schema("identity")
+}
+
+model Permission {
+  id          String @id @default(uuid())
+  key         String @unique
+  description String
+
+  rolePermissions RolePermission[]
+
+  @@schema("identity")
+}
+
+model RolePermission {
+  id           String     @id @default(uuid())
+  roleId       String
+  role         Role       @relation(fields: [roleId], references: [id])
+  permissionId String
+  permission   Permission @relation(fields: [permissionId], references: [id])
+
+  @@unique([roleId, permissionId])
+  @@schema("identity")
+}
+
+model UserRole {
+  id             String   @id @default(uuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id])
+  roleId         String
+  role           Role     @relation(fields: [roleId], references: [id])
+  grantedByUserId String
+  validFrom      DateTime @default(now())
+  validUntil     DateTime?
+  createdAt      DateTime @default(now())
+
+  scopeAssignments ScopeAssignment[]
+
+  @@schema("identity")
+}
+
+model ScopeAssignment {
+  id         String    @id @default(uuid())
+  userRoleId String
+  userRole   UserRole  @relation(fields: [userRoleId], references: [id])
+  scopeType  ScopeType
+  scopeValue String
+  createdAt  DateTime  @default(now())
+
+  @@schema("identity")
+}
+
+model AccessReview {
+  id         String               @id @default(uuid())
+  userId     String
+  reviewerId String
+  reviewedAt DateTime             @default(now())
+  decision   AccessReviewDecision
+  notes      String?
+
+  @@schema("identity")
+}
+
+model PrivilegedAccessGrant {
+  id              String    @id @default(uuid())
+  userId          String
+  user            User      @relation("PrivilegedGrantSubject", fields: [userId], references: [id])
+  reason          String
+  grantedByUserId String
+  expiresAt       DateTime
+  revokedAt       DateTime?
+  breakGlass      Boolean   @default(false)
+  createdAt       DateTime  @default(now())
+
+  @@schema("identity")
+}
+
+model Session {
+  id               String    @id @default(uuid())
+  userId           String
+  user             User      @relation(fields: [userId], references: [id])
+  createdAt        DateTime  @default(now())
+  expiresAt        DateTime
+  revokedAt        DateTime?
+  ipHash           String?
+  userAgentSummary String?
+
+  @@schema("identity")
+}
+
+model LoginEvent {
+  id            String      @id @default(uuid())
+  userId        String?
+  user          User?       @relation(fields: [userId], references: [id])
+  email         String
+  result        LoginResult
+  mfaUsed       Boolean     @default(false)
+  occurredAt    DateTime    @default(now())
+  ipHash        String?
+  correlationId String?
+
+  @@schema("identity")
+}
+
+// =============================================================================
+// 8.2 Conteúdo institucional — schema "content"
+// =============================================================================
+
+enum ContentStatus {
+  DRAFT
+  IN_REVIEW
+  PUBLISHED
+  UNPUBLISHED
+
+  @@schema("content")
+}
+
+model ContentPage {
+  id                String        @id @default(uuid())
+  slug              String        @unique
+  title             String
+  status            ContentStatus @default(DRAFT)
+  createdByUserId   String
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  publishedAt       DateTime?
+
+  revisions   ContentRevision[]
+  seoMetadata SeoMetadata?
+
+  @@schema("content")
+}
+
+model ContentRevision {
+  id             String      @id @default(uuid())
+  pageId         String
+  page           ContentPage @relation(fields: [pageId], references: [id])
+  body           Json
+  authorUserId   String
+  createdAt      DateTime    @default(now())
+  approvedByUserId String?
+  approvedAt     DateTime?
+
+  @@schema("content")
+}
+
+model NewsPost {
+  id             String        @id @default(uuid())
+  slug           String        @unique
+  title          String
+  categoryId     String?
+  category       Category?     @relation(fields: [categoryId], references: [id])
+  status         ContentStatus @default(DRAFT)
+  body           Json
+  authorUserId   String
+  reviewerUserId String?
+  publishedAt    DateTime?
+  expiresAt      DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  seoMetadata SeoMetadata?
+
+  @@schema("content")
+}
+
+model Category {
+  id   String @id @default(uuid())
+  name String
+  slug String @unique
+
+  newsPosts NewsPost[]
+
+  @@schema("content")
+}
+
+model MediaAsset {
+  id               String   @id @default(uuid())
+  objectKey        String
+  altText          String
+  mimeType         String
+  sizeBytes        Int
+  uploadedByUserId String
+  createdAt        DateTime @default(now())
+
+  @@schema("content")
+}
+
+model Menu {
+  id    String @id @default(uuid())
+  key   String @unique
+  label String
+
+  items MenuItem[]
+
+  @@schema("content")
+}
+
+model MenuItem {
+  id       String    @id @default(uuid())
+  menuId   String
+  menu     Menu      @relation(fields: [menuId], references: [id])
+  label    String
+  url      String
+  order    Int       @default(0)
+  parentId String?
+  parent   MenuItem? @relation("MenuItemChildren", fields: [parentId], references: [id])
+  children MenuItem[] @relation("MenuItemChildren")
+
+  @@schema("content")
+}
+
+model Redirect {
+  id         String   @id @default(uuid())
+  fromPath   String   @unique
+  toPath     String
+  statusCode Int      @default(301)
+  createdAt  DateTime @default(now())
+
+  @@schema("content")
+}
+
+model SeoMetadata {
+  id            String       @id @default(uuid())
+  contentPageId String?      @unique
+  contentPage   ContentPage? @relation(fields: [contentPageId], references: [id])
+  newsPostId    String?      @unique
+  newsPost      NewsPost?    @relation(fields: [newsPostId], references: [id])
+  title         String
+  description   String
+  canonicalUrl  String?
+  ogImageUrl    String?
+
+  @@schema("content")
+}
+
+model Partner {
+  id            String  @id @default(uuid())
+  name          String
+  logoObjectKey String?
+  url           String?
+  approved      Boolean @default(false)
+
+  @@schema("content")
+}
+
+model Testimonial {
+  id       String  @id @default(uuid())
+  authorName String
+  body     String
+  approved Boolean @default(false)
+
+  @@schema("content")
+}
+
+model InstitutionalContact {
+  id         String  @id @default(uuid())
+  department String
+  email      String
+  phone      String?
+
+  @@schema("content")
+}
+
+// =============================================================================
+// 8.3 Concursos — schema "contests"
+// =============================================================================
+
+enum ContestStatus {
+  DRAFT
+  IN_REVIEW
+  SCHEDULED
+  PUBLISHED
+  SUSPENDED
+  CLOSED
+  ARCHIVED
+
+  @@schema("contests")
+}
+
+enum DocumentKind {
+  EDITAL
+  ANEXO
+  RETIFICACAO
+  COMUNICADO
+
+  @@schema("contests")
+}
+
+enum AntivirusStatus {
+  PENDING
+  CLEAN
+  INFECTED
+
+  @@schema("contests")
+}
+
+enum SubscriptionChannel {
+  EMAIL
+  WHATSAPP
+
+  @@schema("contests")
+}
+
+model ContestOrganization {
+  id   String  @id @default(uuid())
+  name String
+  cnpj String?
+
+  contests Contest[]
+
+  @@schema("contests")
+}
+
+model Contest {
+  id                     String              @id @default(uuid())
+  slug                   String              @unique
+  title                  String
+  organizationId         String
+  organization           ContestOrganization @relation(fields: [organizationId], references: [id])
+  status                 ContestStatus       @default(DRAFT)
+  shortDescription       String
+  vacancies              Int?
+  educationLevel         String?
+  registrationOpensAt    DateTime?
+  registrationClosesAt   DateTime?
+  examDate               DateTime?
+  feeAmountCents         Int?
+  createdByUserId        String
+  createdAt              DateTime            @default(now())
+  updatedAt              DateTime            @updatedAt
+  publishedAt            DateTime?
+
+  stages              ContestStage[]
+  milestones          ContestMilestone[]
+  positions           ContestPosition[]
+  locations           ContestLocation[]
+  documents           ContestDocument[]
+  announcements       ContestAnnouncement[]
+  faqs                ContestFaq[]
+  serviceLinks        ContestServiceLink[]
+  candidateProviderConfig CandidateProviderConfig?
+  subscriptions       ContestSubscription[]
+  publicationApprovals ContestPublicationApproval[]
+
+  @@schema("contests")
+}
+
+model ContestStage {
+  id        String   @id @default(uuid())
+  contestId String
+  contest   Contest  @relation(fields: [contestId], references: [id])
+  name      String
+  order     Int      @default(0)
+
+  milestones ContestMilestone[]
+
+  @@schema("contests")
+}
+
+model ContestMilestone {
+  id          String        @id @default(uuid())
+  contestId   String
+  contest     Contest       @relation(fields: [contestId], references: [id])
+  stageId     String?
+  stage       ContestStage? @relation(fields: [stageId], references: [id])
+  label       String
+  date        DateTime
+  description String?
+
+  @@schema("contests")
+}
+
+model ContestPosition {
+  id           String  @id @default(uuid())
+  contestId    String
+  contest      Contest @relation(fields: [contestId], references: [id])
+  title        String
+  vacancies    Int
+  requirements String
+  salaryCents  Int?
+
+  @@schema("contests")
+}
+
+model ContestLocation {
+  id        String  @id @default(uuid())
+  contestId String
+  contest   Contest @relation(fields: [contestId], references: [id])
+  city      String
+  state     String
+  address   String?
+
+  @@schema("contests")
+}
+
+model ContestDocument {
+  id                String   @id @default(uuid())
+  contestId         String
+  contest           Contest  @relation(fields: [contestId], references: [id])
+  kind              DocumentKind
+  currentVersionId  String?  @unique
+  createdAt         DateTime @default(now())
+
+  versions DocumentVersion[] @relation("DocumentVersions")
+
+  @@schema("contests")
+}
+
+model DocumentVersion {
+  id              String          @id @default(uuid())
+  documentId      String
+  document        ContestDocument @relation("DocumentVersions", fields: [documentId], references: [id])
+  versionNumber   Int
+  objectKey       String
+  checksumSha256  String
+  mimeType        String
+  sizeBytes       Int
+  antivirusStatus AntivirusStatus @default(PENDING)
+  authorUserId    String
+  approverUserId  String?
+  publishedAt     DateTime?
+  supersededAt    DateTime?
+
+  @@unique([documentId, versionNumber])
+  @@schema("contests")
+}
+
+model ContestAnnouncement {
+  id           String   @id @default(uuid())
+  contestId    String
+  contest      Contest  @relation(fields: [contestId], references: [id])
+  title        String
+  body         String
+  authorUserId String
+  publishedAt  DateTime?
+  createdAt    DateTime @default(now())
+
+  @@schema("contests")
+}
+
+model ContestFaq {
+  id        String  @id @default(uuid())
+  contestId String
+  contest   Contest @relation(fields: [contestId], references: [id])
+  question  String
+  answer    String
+  order     Int     @default(0)
+
+  @@schema("contests")
+}
+
+model ContestServiceLink {
+  id             String    @id @default(uuid())
+  contestId      String
+  contest        Contest   @relation(fields: [contestId], references: [id])
+  label          String
+  url            String
+  healthStatus   String?
+  lastCheckedAt  DateTime?
+
+  @@schema("contests")
+}
+
+model CandidateProviderConfig {
+  id                       String  @id @default(uuid())
+  contestId                String  @unique
+  contest                  Contest @relation(fields: [contestId], references: [id])
+  providerKey              String
+  signInUrlOverride        String?
+  registrationUrlOverride  String?
+
+  @@schema("contests")
+}
+
+model ContestSubscription {
+  id              String              @id @default(uuid())
+  contestId       String
+  contest         Contest             @relation(fields: [contestId], references: [id])
+  contactEmail    String
+  channel         SubscriptionChannel
+  consentGivenAt  DateTime
+  createdAt       DateTime            @default(now())
+
+  @@schema("contests")
+}
+
+model ContestPublicationApproval {
+  id             String    @id @default(uuid())
+  contestId      String
+  contest        Contest   @relation(fields: [contestId], references: [id])
+  authorUserId   String
+  approverUserId String
+  scheduledFor   DateTime?
+  decidedAt      DateTime?
+
+  @@schema("contests")
+}
+
+// =============================================================================
+// 8.4 Atendimento omnichannel — schema "service"
+// =============================================================================
+
+enum TicketChannel {
+  WEB
+  EMAIL
+  WHATSAPP
+  CHAT
+
+  @@schema("service")
+}
+
+enum TicketStatus {
+  NEW
+  IN_PROGRESS
+  ANSWERED
+  CLOSED
+  REOPENED
+
+  @@schema("service")
+}
+
+enum TicketPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+
+  @@schema("service")
+}
+
+enum MessageDirection {
+  INBOUND
+  OUTBOUND
+
+  @@schema("service")
+}
+
+enum SlaEventKind {
+  FIRST_RESPONSE_DUE
+  RESOLUTION_DUE
+  BREACHED
+  MET
+
+  @@schema("service")
+}
+
+enum KnowledgeStatus {
+  DRAFT
+  PUBLISHED
+  EXPIRED
+
+  @@schema("service")
+}
+
+enum IntegrationDeliveryProvider {
+  GRAPH
+  WHATSAPP
+
+  @@schema("service")
+}
+
+enum IntegrationDeliveryStatus {
+  PENDING
+  DELIVERED
+  FAILED
+
+  @@schema("service")
+}
+
+model Contact {
+  id       String  @id @default(uuid())
+  name     String
+  email    String
+  phone    String?
+  cpfHash  String?
+  createdAt DateTime @default(now())
+
+  tickets Ticket[]
+
+  @@schema("service")
+}
+
+model Queue {
+  id   String @id @default(uuid())
+  key  String @unique
+  name String
+
+  tickets Ticket[]
+
+  @@schema("service")
+}
+
+model SlaPolicy {
+  id                   String @id @default(uuid())
+  name                 String
+  firstResponseMinutes Int
+  resolutionMinutes    Int
+
+  tickets Ticket[]
+
+  @@schema("service")
+}
+
+model Ticket {
+  id              String         @id @default(uuid())
+  protocol        String         @unique
+  contactId       String
+  contact         Contact        @relation(fields: [contactId], references: [id])
+  // Referência lógica ao domínio "contests" — sem FK de banco (ver nota no topo do arquivo).
+  contestId       String?
+  queueId         String
+  queue           Queue          @relation(fields: [queueId], references: [id])
+  channel         TicketChannel
+  status          TicketStatus   @default(NEW)
+  priority        TicketPriority @default(NORMAL)
+  subject         String
+  slaPolicyId     String?
+  slaPolicy       SlaPolicy?     @relation(fields: [slaPolicyId], references: [id])
+  assignedUserId  String?
+  createdAt       DateTime       @default(now())
+  closedAt        DateTime?
+  reopenedAt      DateTime?
+
+  conversations Conversation[]
+  assignments   Assignment[]
+  slaEvents     SlaEvent[]
+  internalNotes InternalNote[]
+  attachments   Attachment[]
+  satisfactionSurvey SatisfactionSurvey?
+  integrationDeliveries IntegrationDelivery[]
+
+  @@schema("service")
+}
+
+model Conversation {
+  id        String        @id @default(uuid())
+  ticketId  String
+  ticket    Ticket        @relation(fields: [ticketId], references: [id])
+  channel   TicketChannel
+  startedAt DateTime      @default(now())
+
+  messages Message[]
+
+  @@schema("service")
+}
+
+model Message {
+  id                String           @id @default(uuid())
+  conversationId    String
+  conversation      Conversation     @relation(fields: [conversationId], references: [id])
+  direction         MessageDirection
+  body              String
+  authorUserId      String?
+  providerMessageId String?
+  createdAt         DateTime         @default(now())
+
+  attachments Attachment[]
+
+  @@schema("service")
+}
+
+model Assignment {
+  id              String    @id @default(uuid())
+  ticketId        String
+  ticket          Ticket    @relation(fields: [ticketId], references: [id])
+  userId          String
+  assignedByUserId String
+  assignedAt      DateTime  @default(now())
+  releasedAt      DateTime?
+  justification   String?
+
+  @@schema("service")
+}
+
+model SlaEvent {
+  id         String       @id @default(uuid())
+  ticketId   String
+  ticket     Ticket       @relation(fields: [ticketId], references: [id])
+  kind       SlaEventKind
+  occurredAt DateTime     @default(now())
+
+  @@schema("service")
+}
+
+model InternalNote {
+  id           String   @id @default(uuid())
+  ticketId     String
+  ticket       Ticket   @relation(fields: [ticketId], references: [id])
+  authorUserId String
+  body         String
+  createdAt    DateTime @default(now())
+
+  @@schema("service")
+}
+
+model Attachment {
+  id             String    @id @default(uuid())
+  messageId      String?
+  message        Message?  @relation(fields: [messageId], references: [id])
+  ticketId       String?
+  ticket         Ticket?   @relation(fields: [ticketId], references: [id])
+  objectKey      String
+  mimeType       String
+  sizeBytes      Int
+  createdAt      DateTime  @default(now())
+
+  @@schema("service")
+}
+
+model Tag {
+  id   String @id @default(uuid())
+  name String @unique
+
+  @@schema("service")
+}
+
+model ContactReason {
+  id   String @id @default(uuid())
+  name String @unique
+
+  @@schema("service")
+}
+
+model KnowledgeArticle {
+  id             String          @id @default(uuid())
+  title          String
+  slug           String          @unique
+  status         KnowledgeStatus @default(DRAFT)
+  body           String
+  authorUserId   String
+  approverUserId String?
+  validUntil     DateTime?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  revisions KnowledgeRevision[]
+
+  @@schema("service")
+}
+
+model KnowledgeRevision {
+  id             String           @id @default(uuid())
+  articleId      String
+  article        KnowledgeArticle @relation(fields: [articleId], references: [id])
+  body           String
+  editedByUserId String
+  createdAt      DateTime         @default(now())
+
+  @@schema("service")
+}
+
+model ResponseTemplate {
+  id       String  @id @default(uuid())
+  name     String
+  body     String
+  approved Boolean @default(false)
+
+  @@schema("service")
+}
+
+model AutomationRule {
+  id          String  @id @default(uuid())
+  name        String
+  triggerType String
+  action      Json
+  enabled     Boolean @default(false)
+
+  @@schema("service")
+}
+
+model SatisfactionSurvey {
+  id          String   @id @default(uuid())
+  ticketId    String   @unique
+  ticket      Ticket   @relation(fields: [ticketId], references: [id])
+  score       Int
+  comment     String?
+  respondedAt DateTime @default(now())
+
+  @@schema("service")
+}
+
+model IntegrationDelivery {
+  id                String                      @id @default(uuid())
+  ticketId          String?
+  ticket            Ticket?                     @relation(fields: [ticketId], references: [id])
+  provider          IntegrationDeliveryProvider
+  providerMessageId String
+  direction         MessageDirection
+  status            IntegrationDeliveryStatus   @default(PENDING)
+  attempts          Int                         @default(0)
+  lastAttemptAt     DateTime?
+  deadLetteredAt    DateTime?
+
+  @@unique([provider, providerMessageId])
+  @@schema("service")
+}
+
+// =============================================================================
+// 8.5 Canal de denúncias — schema "whistleblowing" (ISOLADO — ver ADR-0003)
+// =============================================================================
+
+enum WhistleblowingCaseStatus {
+  RECEIVED
+  TRIAGE
+  UNDER_ANALYSIS
+  AWAITING_INFO
+  DECIDED
+  CLOSED
+
+  @@schema("whistleblowing")
+}
+
+enum WhistleblowingRiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+
+  @@schema("whistleblowing")
+}
+
+enum WhistleblowingPartyRole {
+  REPORTED
+  WITNESS
+  VICTIM
+
+  @@schema("whistleblowing")
+}
+
+enum WhistleblowingMessageDirection {
+  FROM_REPORTER
+  FROM_INSTITUTION
+
+  @@schema("whistleblowing")
+}
+
+enum WhistleblowingAccessAction {
+  VIEW
+  EXPORT
+
+  @@schema("whistleblowing")
+}
+
+model WhistleblowingCategory {
+  id          String  @id @default(uuid())
+  name        String
+  description String?
+
+  cases            WhistleblowingCase[]
+  retentionPolicy  WhistleblowingRetentionPolicy?
+
+  @@schema("whistleblowing")
+}
+
+model WhistleblowingCase {
+  id          String                   @id @default(uuid())
+  protocol    String                   @unique
+  categoryId  String
+  category    WhistleblowingCategory   @relation(fields: [categoryId], references: [id])
+  status      WhistleblowingCaseStatus @default(RECEIVED)
+  riskLevel   WhistleblowingRiskLevel?
+  isAnonymous Boolean
+  createdAt   DateTime                 @default(now())
+  closedAt    DateTime?
+
+  credential     WhistleblowingCredential?
+  parties        WhistleblowingParty[]
+  messages       WhistleblowingMessage[]
+  evidence       WhistleblowingEvidence[]
+  assignments    WhistleblowingAssignment[]
+  statusHistory  WhistleblowingStatusHistory[]
+  decision       WhistleblowingDecision?
+  accessEvents   WhistleblowingAccessEvent[]
+
+  @@schema("whistleblowing")
+}
+
+/** Nunca armazenar o código em texto puro — apenas hash (Argon2id) + comparação em tempo
+ * constante na camada de aplicação. Ver docs/SECURITY_AND_PRIVACY.md. */
+model WhistleblowingCredential {
+  id             String    @id @default(uuid())
+  caseId         String    @unique
+  case           WhistleblowingCase @relation(fields: [caseId], references: [id])
+  codeHash       String
+  algorithm      String    @default("argon2id")
+  failedAttempts Int       @default(0)
+  lockedUntil    DateTime?
+  createdAt      DateTime  @default(now())
+
+  @@schema("whistleblowing")
+}
+
+model WhistleblowingParty {
+  id          String                  @id @default(uuid())
+  caseId      String
+  case        WhistleblowingCase      @relation(fields: [caseId], references: [id])
+  role        WhistleblowingPartyRole
+  name        String?
+  description String?
+
+  @@schema("whistleblowing")
+}
+
+model WhistleblowingMessage {
+  id        String                         @id @default(uuid())
+  caseId    String
+  case      WhistleblowingCase             @relation(fields: [caseId], references: [id])
+  direction WhistleblowingMessageDirection
+  body      String
+  createdAt DateTime                       @default(now())
+
+  @@schema("whistleblowing")
+}
+
+model WhistleblowingEvidence {
+  id                 String   @id @default(uuid())
+  caseId             String
+  case               WhistleblowingCase @relation(fields: [caseId], references: [id])
+  objectKey          String
+  checksumSha256     String
+  chainOfCustodyNote String?
+  createdAt          DateTime @default(now())
+
+  @@schema("whistleblowing")
+}
+
+model WhistleblowingAssignment {
+  id               String   @id @default(uuid())
+  caseId           String
+  case             WhistleblowingCase @relation(fields: [caseId], references: [id])
+  analystUserId    String
+  assignedAt       DateTime @default(now())
+  restrictedAccess Boolean  @default(false)
+
+  @@schema("whistleblowing")
+}
+
+model WhistleblowingStatusHistory {
+  id            String                    @id @default(uuid())
+  caseId        String
+  case          WhistleblowingCase        @relation(fields: [caseId], references: [id])
+  fromStatus    WhistleblowingCaseStatus?
+  toStatus      WhistleblowingCaseStatus
+  changedByUserId String
+  changedAt     DateTime                  @default(now())
+  justification String?
+
+  @@schema("whistleblowing")
+}
+
+model WhistleblowingDecision {
+  id               String   @id @default(uuid())
+  caseId           String   @unique
+  case             WhistleblowingCase @relation(fields: [caseId], references: [id])
+  summary          String
+  decidedByUserId  String
+  decidedAt        DateTime @default(now())
+  reviewedByUserId String?
+
+  @@schema("whistleblowing")
+}
+
+/** Trilha de acesso específica do domínio (`CASE_ACCESSED`) — adicional ao AuditEvent geral. */
+model WhistleblowingAccessEvent {
+  id             String                     @id @default(uuid())
+  caseId         String
+  case           WhistleblowingCase         @relation(fields: [caseId], references: [id])
+  accessedByUserId String
+  justification  String
+  accessedAt     DateTime                   @default(now())
+  action         WhistleblowingAccessAction
+
+  @@schema("whistleblowing")
+}
+
+model WhistleblowingRetentionPolicy {
+  id            String                  @id @default(uuid())
+  categoryId    String?                 @unique
+  category      WhistleblowingCategory? @relation(fields: [categoryId], references: [id])
+  retentionDays Int
+  description   String?
+
+  @@schema("whistleblowing")
+}
+
+// =============================================================================
+// 8.6 Anúncios — schema "advertising"
+// =============================================================================
+
+enum CampaignStatus {
+  DRAFT
+  PENDING_REVIEW
+  PENDING_COMPLIANCE
+  APPROVED
+  ACTIVE
+  PAUSED
+  FINISHED
+  REJECTED
+
+  @@schema("advertising")
+}
+
+enum CreativeFormat {
+  DESKTOP
+  MOBILE
+
+  @@schema("advertising")
+}
+
+enum BillingStatus {
+  PENDING
+  INVOICED
+  PAID
+
+  @@schema("advertising")
+}
+
+enum BrandSafetyRuleKind {
+  BLOCK_CATEGORY
+  BLOCK_URL
+
+  @@schema("advertising")
+}
+
+model Advertiser {
+  id        String  @id @default(uuid())
+  legalName String
+  taxId     String?
+
+  contracts AdvertisingContract[]
+  campaigns Campaign[]
+
+  @@schema("advertising")
+}
+
+model AdvertisingContract {
+  id           String     @id @default(uuid())
+  advertiserId String
+  advertiser   Advertiser @relation(fields: [advertiserId], references: [id])
+  startDate    DateTime
+  endDate      DateTime
+  terms        String?
+
+  campaigns      Campaign[]
+  billingRecords BillingRecord[]
+
+  @@schema("advertising")
+}
+
+model Campaign {
+  id              String              @id @default(uuid())
+  advertiserId    String
+  advertiser      Advertiser          @relation(fields: [advertiserId], references: [id])
+  contractId      String?
+  contract        AdvertisingContract? @relation(fields: [contractId], references: [id])
+  name            String
+  status          CampaignStatus      @default(DRAFT)
+  createdByUserId String
+  createdAt       DateTime            @default(now())
+
+  creatives           Creative[]
+  campaignPlacements  CampaignPlacement[]
+  schedule            CampaignSchedule?
+  approval            CampaignApproval?
+  impressionAggregates ImpressionAggregate[]
+  clickAggregates     ClickAggregate[]
+
+  @@schema("advertising")
+}
+
+model Creative {
+  id              String         @id @default(uuid())
+  campaignId      String
+  campaign        Campaign       @relation(fields: [campaignId], references: [id])
+  format          CreativeFormat
+  objectKey       String
+  destinationUrl  String
+  approved        Boolean        @default(false)
+
+  @@schema("advertising")
+}
+
+model Placement {
+  id   String @id @default(uuid())
+  key  String @unique
+  name String
+  page String
+
+  campaignPlacements CampaignPlacement[]
+
+  @@schema("advertising")
+}
+
+model CampaignPlacement {
+  id          String    @id @default(uuid())
+  campaignId  String
+  campaign    Campaign  @relation(fields: [campaignId], references: [id])
+  placementId String
+  placement   Placement @relation(fields: [placementId], references: [id])
+
+  @@unique([campaignId, placementId])
+  @@schema("advertising")
+}
+
+model CampaignSchedule {
+  id              String       @id @default(uuid())
+  campaignId      String       @unique
+  campaign        Campaign     @relation(fields: [campaignId], references: [id])
+  startsAt        DateTime
+  endsAt          DateTime
+  frequencyCapId  String?
+  frequencyCap    FrequencyCap? @relation(fields: [frequencyCapId], references: [id])
+
+  @@schema("advertising")
+}
+
+model CampaignApproval {
+  id                String    @id @default(uuid())
+  campaignId        String    @unique
+  campaign          Campaign  @relation(fields: [campaignId], references: [id])
+  reviewerUserId    String
+  complianceUserId  String?
+  decidedAt         DateTime?
+  approved          Boolean?
+
+  @@schema("advertising")
+}
+
+model FrequencyCap {
+  id                    String @id @default(uuid())
+  name                  String
+  maxImpressionsPerUser Int
+  perPeriodHours        Int
+
+  schedules CampaignSchedule[]
+
+  @@schema("advertising")
+}
+
+model ImpressionAggregate {
+  id         String   @id @default(uuid())
+  campaignId String
+  campaign   Campaign @relation(fields: [campaignId], references: [id])
+  date       DateTime @db.Date
+  count      Int      @default(0)
+
+  @@unique([campaignId, date])
+  @@schema("advertising")
+}
+
+model ClickAggregate {
+  id         String   @id @default(uuid())
+  campaignId String
+  campaign   Campaign @relation(fields: [campaignId], references: [id])
+  date       DateTime @db.Date
+  count      Int      @default(0)
+
+  @@unique([campaignId, date])
+  @@schema("advertising")
+}
+
+model BillingRecord {
+  id          String              @id @default(uuid())
+  contractId  String
+  contract    AdvertisingContract @relation(fields: [contractId], references: [id])
+  periodStart DateTime
+  periodEnd   DateTime
+  amountCents Int
+  status      BillingStatus       @default(PENDING)
+
+  @@schema("advertising")
+}
+
+model BrandSafetyRule {
+  id    String              @id @default(uuid())
+  kind  BrandSafetyRuleKind
+  value String
+
+  @@schema("advertising")
+}
+
+// =============================================================================
+// 8.7 Governança e operação — schema "governance"
+// =============================================================================
+
+enum AuditResult {
+  SUCCESS
+  FAILURE
+
+  @@schema("governance")
+}
+
+enum IntegrationEventStatus {
+  PENDING
+  PROCESSED
+  FAILED
+  DEAD_LETTERED
+
+  @@schema("governance")
+}
+
+enum BackgroundJobStatus {
+  QUEUED
+  RUNNING
+  COMPLETED
+  FAILED
+
+  @@schema("governance")
+}
+
+enum DataSubjectRequestKind {
+  ACCESS
+  CORRECTION
+  DELETION
+  PORTABILITY
+
+  @@schema("governance")
+}
+
+enum DataSubjectRequestStatus {
+  RECEIVED
+  IN_PROGRESS
+  COMPLETED
+  REJECTED
+
+  @@schema("governance")
+}
+
+enum IncidentSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+
+  @@schema("governance")
+}
+
+enum IncidentStatus {
+  OPEN
+  MITIGATED
+  RESOLVED
+
+  @@schema("governance")
+}
+
+/** Trilha de auditoria geral — imutável pela interface comum (seção 10.8). */
+model AuditEvent {
+  id               String      @id @default(uuid())
+  actorUserId      String?
+  actorRole        String?
+  action           String
+  resourceType     String
+  resourceId       String?
+  beforeData       Json?
+  afterData        Json?
+  occurredAt       DateTime    @default(now())
+  correlationId    String?
+  result           AuditResult @default(SUCCESS)
+  riskLevel        String?
+  justification    String?
+  ipHash           String?
+  userAgentSummary String?
+
+  @@schema("governance")
+}
+
+model IntegrationEvent {
+  id          String                 @id @default(uuid())
+  provider    String
+  eventType   String
+  payloadHash String
+  receivedAt  DateTime               @default(now())
+  processedAt DateTime?
+  status      IntegrationEventStatus @default(PENDING)
+
+  @@schema("governance")
+}
+
+/** Outbox transacional — regra 6.3 (eventos de domínio + transactional outbox). */
+model OutboxEvent {
+  id            String    @id @default(uuid())
+  aggregateType String
+  aggregateId   String
+  eventType     String
+  payload       Json
+  occurredAt    DateTime  @default(now())
+  publishedAt   DateTime?
+
+  @@schema("governance")
+}
+
+model BackgroundJob {
+  id          String              @id @default(uuid())
+  queueName   String
+  jobType     String
+  status      BackgroundJobStatus @default(QUEUED)
+  attempts    Int                 @default(0)
+  lastError   String?
+  createdAt   DateTime            @default(now())
+  completedAt DateTime?
+
+  @@schema("governance")
+}
+
+model FeatureFlag {
+  id          String  @id @default(uuid())
+  key         String  @unique
+  enabled     Boolean @default(false)
+  description String?
+
+  @@schema("governance")
+}
+
+model SystemSetting {
+  id    String @id @default(uuid())
+  key   String @unique
+  value Json
+
+  @@schema("governance")
+}
+
+model DataRetentionExecution {
+  id              String   @id @default(uuid())
+  policyName      String
+  executedAt      DateTime @default(now())
+  recordsAffected Int
+
+  @@schema("governance")
+}
+
+model DataSubjectRequest {
+  id             String                   @id @default(uuid())
+  requesterEmail String
+  kind           DataSubjectRequestKind
+  status         DataSubjectRequestStatus @default(RECEIVED)
+  createdAt      DateTime                 @default(now())
+  resolvedAt     DateTime?
+
+  @@schema("governance")
+}
+
+model Incident {
+  id          String           @id @default(uuid())
+  title       String
+  severity    IncidentSeverity
+  status      IncidentStatus   @default(OPEN)
+  detectedAt  DateTime         @default(now())
+  resolvedAt  DateTime?
+
+  @@schema("governance")
+}

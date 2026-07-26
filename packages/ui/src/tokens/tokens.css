@@ -1,0 +1,41 @@
+/**
+ * Variáveis CSS geradas a partir de tokens.ts — consumidas pelo tailwind.config de apps/web.
+ * Mantenha os dois arquivos sincronizados; não hardcode cores fora daqui (seção 5.2).
+ */
+:root {
+  --color-navy-primary: #071b3d;
+  --color-navy-secondary: #0b2d60;
+  --color-action-blue: #0b66d4;
+  --color-support-cyan: #23b5e8;
+  --color-institutional-red: #d52b3f;
+  --color-success-green: #12805c;
+  --color-background-light: #f3f7fb;
+  --color-surface: #ffffff;
+  --color-text-primary: #14233d;
+  --color-text-secondary: #61708a;
+  --color-border: #dce6f2;
+
+  --font-family-base: "Inter", "Public Sans", system-ui, -apple-system, sans-serif;
+
+  --radius-sm: 0.25rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-full: 9999px;
+
+  --focus-ring-width: 3px;
+  --focus-ring-color: var(--color-action-blue);
+  --focus-ring-offset: 2px;
+
+  --motion-duration-fast: 120ms;
+  --motion-duration-base: 200ms;
+  --motion-duration-slow: 320ms;
+  --motion-easing: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-duration-fast: 0ms;
+    --motion-duration-base: 0ms;
+    --motion-duration-slow: 0ms;
+  }
+}

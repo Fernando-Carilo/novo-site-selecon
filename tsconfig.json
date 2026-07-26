@@ -1,0 +1,13 @@
+{
+  "files": [],
+  "references": [
+    { "path": "packages/config" },
+    { "path": "packages/contracts" },
+    { "path": "packages/auth" },
+    { "path": "packages/integrations" },
+    { "path": "packages/observability" },
+    { "path": "packages/ui" },
+    { "path": "apps/api" },
+    { "path": "apps/worker" }
+  ]
+}
