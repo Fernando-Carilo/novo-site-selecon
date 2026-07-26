@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  output: "standalone",
   transpilePackages: ["@selecon/ui", "@selecon/contracts"],
   // Regra 13.1: nunca indexar rascunhos, admin, área do candidato, tickets ou denúncias.
   async headers() {

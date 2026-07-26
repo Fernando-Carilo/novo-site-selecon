@@ -15,7 +15,15 @@
     "format:write": "prettier --write .",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
-    "clean": "turbo run clean && rm -rf node_modules"
+    "clean": "turbo run clean && rm -rf node_modules",
+    "docker:build:web": "docker build -f apps/web/Dockerfile -t selecon-portal-web:dev .",
+    "docker:build:api": "docker build -f apps/api/Dockerfile -t selecon-portal-api:dev .",
+    "docker:build:worker": "docker build -f apps/worker/Dockerfile -t selecon-portal-worker:dev .",
+    "docker:build": "pnpm docker:build:web && pnpm docker:build:api && pnpm docker:build:worker",
+    "docker:run:web": "docker run --rm -p 3000:3000 --env-file .env --name selecon-web-dev selecon-portal-web:dev",
+    "docker:run:api": "docker run --rm -p 3001:3001 --env-file .env --network host --name selecon-api-dev selecon-portal-api:dev",
+    "docker:run:worker": "docker run --rm --env-file .env --network host --name selecon-worker-dev selecon-portal-worker:dev",
+    "docker:test": "bash scripts/docker-smoke-test.sh"
   },
   "devDependencies": {
     "prettier": "^3.4.2",
