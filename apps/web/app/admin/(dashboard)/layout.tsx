@@ -7,6 +7,7 @@ import { LogoutButton } from "./logout-button";
 const NAV_ITEMS = [
   { href: "/admin", label: "Command Center" },
   { href: "/admin/concursos", label: "Concursos" },
+  { href: "/admin/atendimento", label: "Atendimento" },
 ];
 
 export default async function AdminDashboardLayout({ children }: { children: ReactNode }) {

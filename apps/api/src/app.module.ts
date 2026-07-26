@@ -6,6 +6,7 @@ import { AuthModule } from "./auth/auth.module.js";
 import { ContestsModule } from "./contests/contests.module.js";
 import { HealthModule } from "./health/health.module.js";
 import { IntegrationsModule } from "./integrations/integrations.module.js";
+import { TicketsModule } from "./tickets/tickets.module.js";
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { IntegrationsModule } from "./integrations/integrations.module.js";
     AuditModule,
     AuthModule,
     ContestsModule,
+    TicketsModule,
     IntegrationsModule,
     HealthModule,
   ],
