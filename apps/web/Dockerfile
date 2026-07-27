@@ -6,9 +6,13 @@
 #
 # Multi-stage com `turbo prune` para copiar apenas o subconjunto do monorepo
 # necessário para apps/web, mantendo cache de camadas eficiente e a imagem final
-# pequena. Compatível com ECS Fargate (linux/amd64).
+# pequena. Uso local apenas (pnpm docker:build/docker:test) — a pipeline AWS usa o
+# Dockerfile na raiz do repositório.
+#
+# Imagem base do Amazon ECR Public Gallery (mirror da Docker Official Image "node"),
+# não do Docker Hub — evita rate limit de pulls anônimos (HTTP 429).
 
-FROM --platform=linux/amd64 node:22-alpine AS base
+FROM --platform=linux/amd64 public.ecr.aws/docker/library/node:22-alpine AS base
 RUN corepack enable
 
 # ---- Stage 1: poda do monorepo para apenas o que apps/web precisa ----

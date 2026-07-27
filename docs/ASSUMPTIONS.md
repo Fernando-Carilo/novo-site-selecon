@@ -332,3 +332,29 @@ ganhou duas variáveis de ambiente novas no `CodeBuildProject` — `ECR_REPOSITO
 (URI completa do ECR, evita reconstruir a string a partir de conta+região+nome) e
 `CONTAINER_PORT` (`3000`) — para casar com o que o `buildspec.yml` agora espera
 encontrar já pronto no ambiente do CodeBuild.
+
+## 15. Bug real encontrado em produção: rate limit do Docker Hub durante `docker build`
+
+Com o `apt-get` corrigido (item 14), o estágio Build voltou a falhar — desta vez no
+próprio `docker build`, ao puxar a imagem base `node:22-alpine`:
+`failed to solve: unexpected status from HEAD request to registry-1.docker.io/...:
+429 Too Many Requests`. O Docker Hub aplica rate limit a pulls anônimos (sem login);
+CodeBuild não estava autenticado no Docker Hub (só no ECR privado, para publicar a
+imagem final).
+
+**Corrigido trocando a imagem base pelo mirror da Docker Official Image no Amazon ECR
+Public Gallery:** `node:22-alpine` → `public.ecr.aws/docker/library/node:22-alpine`,
+nos 4 Dockerfiles do repositório (o da raiz, usado pela pipeline, e os 3 de
+`apps/web`/`apps/api`/`apps/worker`, usados só localmente via `pnpm docker:build`/
+`pnpm docker:test` — trocados por consistência e porque o mesmo rate limit pode
+afetar builds locais). ECR Public não tem o mesmo limite agressivo de pulls anônimos
+do Docker Hub para contas AWS. Nenhuma mudança funcional: mesma imagem, mesma tag,
+outro registry. `apk add` (usado em todos os estágios) não é afetado — usa os
+repositórios do próprio Alpine, não o Docker Hub.
+
+Também removido `--platform=linux/amd64` do `FROM` do `Dockerfile` da raiz (não dos 3
+Dockerfiles locais, que mantêm o pin para build de imagem amd64 mesmo a partir de uma
+máquina de desenvolvedor ARM, ex. Apple Silicon). No Dockerfile da pipeline o pin era
+redundante — o runner do CodeBuild e a instância EC2 do Elastic Beanstalk (`t3.micro`)
+já são amd64 nativamente — e o próprio BuildKit sinalizava isso como um lint
+(`FromPlatformFlagConstDisallowed`). Não foi a causa da falha, só uma limpeza.

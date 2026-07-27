@@ -6,10 +6,13 @@
 #
 # Estratégia: `turbo prune` para um contexto de build mínimo, build real com
 # devDependencies, e `pnpm deploy --legacy` para produzir um node_modules de
-# produção autocontido (sem symlinks para fora da imagem). Compatível com
-# ECS Fargate (linux/amd64).
+# produção autocontido (sem symlinks para fora da imagem). Uso local apenas (pnpm
+# docker:build/docker:test) — a pipeline AWS usa o Dockerfile na raiz do repositório.
+#
+# Imagem base do Amazon ECR Public Gallery (mirror da Docker Official Image "node"),
+# não do Docker Hub — evita rate limit de pulls anônimos (HTTP 429).
 
-FROM --platform=linux/amd64 node:22-alpine AS base
+FROM --platform=linux/amd64 public.ecr.aws/docker/library/node:22-alpine AS base
 RUN corepack enable
 
 # ---- Stage 1: poda do monorepo para apenas o que apps/api precisa ----

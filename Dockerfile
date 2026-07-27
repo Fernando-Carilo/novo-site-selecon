@@ -27,8 +27,20 @@
 #
 # Contexto de build: raiz do monorepo.
 #   docker build -f Dockerfile -t selecon-portal-app:dev .
-
-FROM --platform=linux/amd64 node:22-alpine AS base
+#
+# Imagem base publicada no Amazon ECR Public Gallery (mirror oficial da Docker
+# Official Image "node"), não no Docker Hub — evita o rate limit de pulls anônimos do
+# Docker Hub (HTTP 429 "Too Many Requests" em HEAD/pull de manifest), que já derrubou
+# o estágio Build do CodeBuild. Todas as stages abaixo derivam de "base" — nenhuma
+# outra imagem é puxada do Docker Hub em nenhum estágio (apk add usa os repositórios
+# do próprio Alpine, não o Docker Hub).
+#
+# Sem "--platform=linux/amd64": tanto o runner do CodeBuild quanto a instância EC2 do
+# Elastic Beanstalk (t3.micro) já são amd64 nativamente — fixar a plataforma força o
+# BuildKit a tratar isso como cross-platform mesmo quando não é, o que o próprio
+# BuildKit sinaliza como redundante ("FromPlatformFlagConstDisallowed"). Removido por
+# ser desnecessário aqui, não por ter causado a falha do build.
+FROM public.ecr.aws/docker/library/node:22-alpine AS base
 RUN corepack enable
 
 # ---- Stage 1: poda do monorepo para apenas o que web+api precisam ----
