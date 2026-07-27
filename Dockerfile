@@ -9,10 +9,17 @@
 #
 # apps/worker (BullMQ) fica FORA desta imagem/deste ambiente DEV: nenhuma fila
 # assíncrona real é processada em produção ainda, e não há ElastiCache provisionado
-# para esta arquitetura (ver docs/ASSUMPTIONS.md). apps/api ainda exige a variável
-# REDIS_URL (validação de schema em packages/config), por isso este container roda um
-# `redis-server` local, efêmero, só para satisfazer essa validação e o próprio health
-# check — nunca um cache compartilhado nem persistente.
+# para esta arquitetura (ver docs/ASSUMPTIONS.md). apps/api DEPENDE de Redis apenas
+# para (a) satisfazer REDIS_URL, obrigatório no schema de env de packages/config, e
+# (b) o próprio health check (HealthService.readiness()) — nenhuma outra rota usa
+# ioredis/BullMQ. Por isso este container roda um `redis-server` local, efêmero, sem
+# persistência (--save "" --appendonly no).
+#
+# PROIBIDO EM HML/PRD: este Redis local é uma solução SOMENTE PARA DEV. Se qualquer
+# funcionalidade real passar a depender de Redis de verdade (cache compartilhado entre
+# instâncias, filas do worker, sessões), a promoção para HML/PRD exige substituir isso
+# por um ElastiCache gerenciado antes do primeiro deploy naqueles ambientes — nunca
+# reaproveitar este redis-server local fora de DEV.
 #
 # Os Dockerfiles antigos (apps/web/Dockerfile, apps/api/Dockerfile,
 # apps/worker/Dockerfile) continuam existindo, mas só para desenvolvimento/teste local

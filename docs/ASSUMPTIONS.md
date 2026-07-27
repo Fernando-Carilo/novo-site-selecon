@@ -239,13 +239,24 @@ Nova arquitetura, decisões de design e por quê:
   processada em produção ainda. O código do worker continua no repositório para
   desenvolvimento local (`docker-compose`, `pnpm docker:build:worker`), só não é
   implantado nesta pipeline.
-- **Redis local efêmero no container, sem ElastiCache.** `apps/api` exige `REDIS_URL`
-  (validação obrigatória de schema em `packages/config/src/env.ts`), mas o único uso
-  real de Redis em `apps/api` é o próprio `HealthService.readiness()` (nenhuma outra
-  rota usa `ioredis`/BullMQ diretamente). Em vez de provisionar um ElastiCache só para
-  satisfazer essa validação, o container instala e inicia um `redis-server` local (sem
-  persistência, `--save ""`) — decisão explicitamente permitida pelo requisito 6, que só
-  proíbe colocar **PostgreSQL** dentro do container, nunca Redis.
+- **Redis local efêmero no container, sem ElastiCache — auditado e confirmado.**
+  Auditoria de todos os imports/usos de Redis e BullMQ no monorepo (`grep` por
+  `ioredis`, `new Redis(`, `bullmq`, `REDIS_URL` em `apps/*` e `packages/*`): o único
+  arquivo que importa `ioredis` é `apps/api/src/health/health.service.ts`, usado
+  exclusivamente por `HealthService.readiness()` (chamado por `/api/health` e
+  `/api/health/ready`) — nenhuma outra rota, middleware, sessão ou rate-limit de
+  `apps/api` usa Redis. `apps/worker` é o único lugar que importa `bullmq`, e não faz
+  parte deste deploy (ver item acima). Conclusão: **`apps/api` depende de Redis**
+  (a validação de schema em `packages/config/src/env.ts` exige `REDIS_URL`, e o
+  próprio health check o usa de verdade), então — em vez de remover Redis do
+  container — ele é mantido, mas **apenas como um `redis-server` local, sem
+  persistência (`--save "" --appendonly no`), exclusivo de DEV**. Decisão
+  explicitamente permitida pelo requisito 6, que só proíbe colocar **PostgreSQL**
+  dentro do container, nunca Redis. **Proibido em HML/PRD:** se alguma
+  funcionalidade real vier a depender de Redis compartilhado entre instâncias (cache,
+  filas do worker, sessões), a promoção para HML/PRD exige um ElastiCache gerenciado
+  antes do primeiro deploy naqueles ambientes — nunca reaproveitar este `redis-server`
+  local fora de DEV (ver comentário correspondente no `Dockerfile`).
 - **`GET /api/health` novo, com status HTTP real.** Adicionada uma rota
   (`apps/api/src/health/health.controller.ts`) que reaproveita
   `HealthService.readiness()` mas, diferente de `/api/health/ready` (pré-existente,

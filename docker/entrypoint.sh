@@ -5,6 +5,7 @@
 #   1. Sobe um redis-server LOCAL e efêmero (só para satisfazer REDIS_URL, obrigatório
 #      no schema de env de apps/api, e o próprio /api/health — nunca um cache
 #      compartilhado; sem persistência, sem ElastiCache — ver docs/ASSUMPTIONS.md).
+#      PROIBIDO EM HML/PRD — solução exclusiva de DEV, ver Dockerfile.
 #   2. Aplica `prisma migrate deploy` de forma controlada (trava por
 #      pg_advisory_lock — ver apps/api/src/scripts/run-migrations.ts), ANTES de
 #      qualquer processo da aplicação começar a atender requisições. Se a migração
