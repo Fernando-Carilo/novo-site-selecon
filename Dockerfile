@@ -65,7 +65,7 @@ RUN apk add --no-cache openssl bash redis
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV HOSTNAME=0.0.0.0
-ENV PORT=8080
+ENV PORT=3000
 ENV API_PORT=3001
 ENV API_INTERNAL_URL=http://127.0.0.1:3001/api
 ENV REDIS_URL=redis://127.0.0.1:6379
@@ -89,11 +89,11 @@ COPY --chown=selecon:nodejs docker/entrypoint.sh ./entrypoint.sh
 RUN chmod +x ./entrypoint.sh
 
 USER selecon
-EXPOSE 8080
+EXPOSE 3000
 
 # Verifica a rota pública de ponta a ponta (passa pelo proxy do web até a api real),
 # não só a api isolada — mesmo caminho que um cliente/EB real usaria.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=45s --retries=3 \
-  CMD node -e "require('http').get('http://127.0.0.1:8080/api/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"
+  CMD node -e "require('http').get('http://127.0.0.1:3000/api/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"
 
 ENTRYPOINT ["./entrypoint.sh"]

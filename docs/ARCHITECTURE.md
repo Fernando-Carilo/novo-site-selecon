@@ -132,7 +132,7 @@ sequenceDiagram
 ```mermaid
 flowchart LR
     Dev[git push\nfeat/fase-1-design-system] --> Source[Source\nCodeConnection]
-    Source --> Build[Build\nlint/typecheck/test/build\ndocker build + push ECR\ngera Dockerrun.aws.json]
+    Source --> Build[Build\ndocker build + push ECR\ngera Dockerrun.aws.json]
     Build --> Deploy[Deploy\nElastic Beanstalk\ncontainer unico web+api]
 ```
 
@@ -143,6 +143,18 @@ puro, sem CDK).
 
 Pontos de design relevantes:
 
+- **Todo o build real acontece dentro do Dockerfile, não no CodeBuild.** O projeto
+  CodeBuild usa a imagem gerenciada `aws/codebuild/amazonlinux2-x86_64-standard:5.0`
+  (Amazon Linux 2, sem `apt-get`/`apt` — só `yum`/`dnf`). Por isso `buildspec.yml` faz
+  apenas autenticação no ECR, `docker build`, push (tag do commit + `:latest`) e geração
+  do `Dockerrun.aws.json` — `pnpm install` e `pnpm turbo run build` (de
+  `apps/web`/`apps/api`) rodam dentro do multi-stage do `Dockerfile` (imagem
+  `node:22-alpine`), nunca no runner do CodeBuild.
+  **Gap conhecido:** nem `buildspec.yml` nem o `Dockerfile` rodam lint/typecheck/testes
+  antes do build de produção — esta pipeline não tem nenhum gate de qualidade
+  automático antes do deploy. `pnpm lint`/`pnpm typecheck`/`pnpm test` continuam
+  existindo e devem ser rodados manualmente (ou via um estágio Validate separado, a
+  reintroduzir) antes de confiar num push para `feat/fase-1-design-system`.
 - **Container único (web + api).** `Dockerfile` (raiz) builda `apps/web` (Next.js,
   standalone) e `apps/api` (NestJS) na mesma imagem — ver `docker/entrypoint.sh`, que
   sobe os dois processos lado a lado e propaga sinais de encerramento entre eles.

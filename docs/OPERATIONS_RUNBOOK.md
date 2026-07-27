@@ -85,10 +85,14 @@ scripts/bootstrap-codepipeline-eb-dev.sh  # ECR + CodeBuild + CodePipeline
 ```
 
 A partir daí, nenhum comando manual adicional é necessário — todo push implanta
-automaticamente: lint/typecheck/test/build, `docker build` da imagem única (web+api),
-push para o ECR, e implantação no Elastic Beanstalk. As migrações do Prisma rodam
-**dentro do próprio container**, no boot, antes da aplicação aceitar requisições — nunca
-mais como uma task ECS avulsa.
+automaticamente: `docker build` da imagem única (web+api — o `Dockerfile` faz
+`pnpm install` e o build internamente; o CodeBuild só builda e publica a imagem, nunca
+instala nada localmente), push para o ECR, e implantação no Elastic Beanstalk. As
+migrações do Prisma rodam **dentro do próprio container**, no boot, antes da aplicação
+aceitar requisições — nunca mais como uma task ECS avulsa.
+
+**Gap conhecido:** esta pipeline não roda lint/typecheck/testes antes do deploy — rode
+`pnpm lint && pnpm typecheck && pnpm test` manualmente antes de confiar num push.
 
 ### 7.1 Rollback
 

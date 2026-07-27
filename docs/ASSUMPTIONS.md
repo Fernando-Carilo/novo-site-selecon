@@ -296,3 +296,39 @@ Nova arquitetura, decisões de design e por quê:
   `GroupDescription` de `AWS::EC2::SecurityGroup` (que só aceitam um conjunto restrito
   de caracteres ASCII) e uma versão do engine PostgreSQL (`16.6`) já sinalizada como
   obsoleta para criação de novas instâncias RDS.
+
+## 14. Bug real encontrado em produção: `apt-get` não existe na imagem do CodeBuild
+
+Com a pipeline já implantada e rodando de verdade (não mais só validada localmente), o
+estágio Build falhou: `buildspec.yml` executava `apt-get update -y`/`apt-get install -y
+postgresql redis-server` (herdado do antigo `buildspec-validate.yml` da arquitetura
+ECS/CDK) para rodar lint/typecheck/testes com Postgres/Redis efêmeros dentro do próprio
+CodeBuild. O projeto CodeBuild usa `aws/codebuild/amazonlinux2-x86_64-standard:5.0`
+(Amazon Linux 2), que não tem `apt-get`/`apt` — só `yum`/`dnf`. Esse comando nunca
+poderia ter funcionado nessa imagem.
+
+**Corrigido removendo completamente essa etapa**, não substituindo por `yum`: o
+`buildspec.yml` agora só autentica no ECR, faz `docker build`/`push` (tag do commit +
+`:latest`) e gera `Dockerrun.aws.json` — nada de `pnpm install`, lint, typecheck ou
+testes rodando diretamente no runner do CodeBuild (isso já acontece dentro do
+`Dockerfile`, que faz `pnpm install` e `pnpm turbo run build` no seu próprio multi-stage
+com a imagem `node:22-alpine`, sem depender de nenhum pacote do sistema operacional do
+CodeBuild). `Dockerrun.aws.json.template` (o arquivo separado com placeholder `sed`) foi
+removido — o `Dockerrun.aws.json` agora é gerado inteiramente inline, via heredoc, no
+próprio `buildspec.yml`.
+
+**Consequência a monitorar:** nem o `buildspec.yml` nem o `Dockerfile` rodam
+lint/typecheck/testes antes do build de produção — a pipeline não tem, hoje, nenhum
+gate de qualidade automático antes do deploy. `pnpm lint`/`pnpm typecheck`/`pnpm test`
+continuam existindo no monorepo e devem ser rodados manualmente antes de um push, ou
+reintroduzidos como um estágio Validate separado no futuro, se um gate automático for
+desejado.
+
+Também corrigida, na mesma rodada: a porta pública do container, que estava em `8080`
+(convenção antiga da tentativa anterior), foi trocada para `3000` (`ENV PORT`, `EXPOSE`,
+`HEALTHCHECK` no `Dockerfile`, e `ContainerPort` no `Dockerrun.aws.json` gerado, via a
+variável `CONTAINER_PORT` do CodeBuild). `infrastructure/cloudformation/pipeline.yml`
+ganhou duas variáveis de ambiente novas no `CodeBuildProject` — `ECR_REPOSITORY_URI`
+(URI completa do ECR, evita reconstruir a string a partir de conta+região+nome) e
+`CONTAINER_PORT` (`3000`) — para casar com o que o `buildspec.yml` agora espera
+encontrar já pronto no ambiente do CodeBuild.

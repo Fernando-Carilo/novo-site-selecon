@@ -36,9 +36,10 @@ Fernando-Carilo/novo-site-selecon (branch feat/fase-1-design-system)
         ▼
   CodePipeline "selecon-portal-dev"  (infrastructure/cloudformation/pipeline.yml)
    ├─ Source  — CodeStarSourceConnection
-   ├─ Build   — CodeBuild (buildspec.yml na raiz): lint/typecheck/test, build,
-   │            docker build (container único web+api), push para ECR,
-   │            gera Dockerrun.aws.json
+   ├─ Build   — CodeBuild (buildspec.yml na raiz): autentica no ECR, docker build
+   │            (container único web+api — o Dockerfile builda/testa a aplicação
+   │            internamente, o CodeBuild só builda a imagem), push para ECR
+   │            (tag do commit + latest), gera Dockerrun.aws.json
    └─ Deploy  — ElasticBeanstalk (Application "selecon-portal",
                 Environment "selecon-portal-dev")
                         │
