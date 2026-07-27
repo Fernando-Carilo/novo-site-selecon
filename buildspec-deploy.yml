@@ -1,9 +1,19 @@
 version: 0.2
 
-# Estágio Deploy do pipeline — synth/diff/deploy de SeleconPortalDevStack (a ÚNICA stack
-# que este buildspec jamais toca; não existe nem uma referência a um ambiente de PRD
-# neste repositório) e atualização do serviço web existente (não gerenciado pelo CDK).
-# Nunca executado neste sandbox (sem credenciais AWS reais).
+# Estágio Deploy do pipeline — roda LOGO APÓS BuildImages e ANTES de Migrations
+# (Source -> Validate -> BuildImages -> Deploy -> Migrations -> SmokeTest). synth/diff/
+# deploy de SeleconPortalDevStack (a ÚNICA stack que este buildspec jamais toca; não
+# existe nem uma referência a um ambiente de PRD neste repositório) e atualização do
+# serviço web existente (não gerenciado pelo CDK). Nunca executado neste sandbox (sem
+# credenciais AWS reais).
+#
+# Por que Deploy vem antes de Migrations: no primeiro run da pipeline,
+# SeleconPortalDevStack ainda não existe — é este estágio que a cria. O passo seguinte
+# (Migrations) exige que a stack e o serviço da api já existam e estejam ACTIVE — ver
+# buildspec-migrations.yml, que agora FALHA (nunca pula) se não existirem. O
+# `post_build` abaixo espera os 3 serviços atingirem steady state antes de passar
+# adiante; isso não depende de nenhuma migração já aplicada, porque o health check
+# `/api/health/ready` só testa `SELECT 1` (ver apps/api/src/health/health.service.ts).
 #
 # Rollback em falha de implantação do ECS é feito pelo circuit breaker de deployment do
 # próprio serviço (deploymentCircuitBreaker: { enable: true, rollback: true } em
@@ -156,7 +166,3 @@ phases:
           exit 1
         fi
         echo "Todos os serviços em steady state."
-
-artifacts:
-  files:
-    - image-tag.json

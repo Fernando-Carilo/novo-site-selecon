@@ -3,10 +3,10 @@
 #
 # Este script (docker build + push + cdk deploy manual, tudo num único CloudShell) foi
 # o caminho original de implantação e foi SUBSTITUÍDO pela pipeline CodePipeline +
-# CodeBuild (Source -> Validate -> BuildImages -> Migrations -> Deploy -> SmokeTest —
+# CodeBuild (Source -> Validate -> BuildImages -> Deploy -> Migrations -> SmokeTest —
 # ver infrastructure/cdk/lib/pipeline-stack.ts e buildspec-*.yml na raiz do repo).
 # O caminho normal agora é: rode scripts/bootstrap-codepipeline-dev.sh uma única vez
-# (autoriza a CodeConnection e cria a pipeline) e, a partir daí, todo
+# (valida a CodeConnection já existente e cria a pipeline) e, a partir daí, todo
 # `git push origin feat/fase-1-design-system` implanta automaticamente — nada precisa
 # rodar manualmente no CloudShell. Ver docs/OPERATIONS_RUNBOOK.md.
 #

@@ -84,7 +84,7 @@ Prisma e smoke tests a cada push em `feat/fase-1-design-system`. Configuração 
 operador humano, uma vez, com credenciais reais):
 
 ```bash
-scripts/bootstrap-codepipeline-dev.sh   # autoriza a CodeConnection e cria a pipeline
+scripts/bootstrap-codepipeline-dev.sh   # valida a CodeConnection já existente e cria a pipeline
 ```
 
 A partir daí, o fluxo normal é apenas `git push origin feat/fase-1-design-system` — nada

@@ -67,9 +67,10 @@ recentes e os bugs reais já encontrados e corrigidos por essa suíte.
 ## 7. Implantação DEV na AWS
 
 O caminho principal de implantação é uma pipeline CodePipeline + CodeBuild (Source →
-Validate → BuildImages → Migrations → Deploy → SmokeTest), disparada automaticamente a
-cada `git push origin feat/fase-1-design-system`. Detalhes completos (arquitetura, cada
-estágio, bugs encontrados e corrigidos) em `infrastructure/README.md` e `docs/ARCHITECTURE.md`.
+Validate → BuildImages → Deploy → Migrations → SmokeTest — Deploy vem antes de Migrations,
+não depois: ver `docs/ASSUMPTIONS.md` item 12), disparada automaticamente a cada
+`git push origin feat/fase-1-design-system`. Detalhes completos (arquitetura, cada estágio,
+bugs encontrados e corrigidos) em `infrastructure/README.md` e `docs/ARCHITECTURE.md`.
 
 Configuração única, feita por um operador humano com credenciais reais no CloudShell:
 
@@ -77,11 +78,11 @@ Configuração única, feita por um operador humano com credenciais reais no Clo
 scripts/bootstrap-codepipeline-dev.sh
 ```
 
-Esse script cria/reaproveita a AWS CodeConnection do GitHub, imprime o ARN e as instruções
-de autorização manual no Console (o único passo humano real de todo o fluxo), espera o
-status ficar `AVAILABLE`, e então `cdk deploy` **somente** `SeleconPortalPipelineStack`.
-Nunca faz `docker build`. A partir daí, nenhum comando manual adicional é necessário —
-todo push implanta automaticamente.
+Esse script **valida** (nunca cria) a AWS CodeConnection do GitHub já existente e já
+`AVAILABLE` (ARN fixo, ver o próprio script), falhando se ela não existir ou não estiver
+disponível, e então `cdk deploy` **somente** `SeleconPortalPipelineStack`. Nunca faz `docker
+build`. A partir daí, nenhum comando manual adicional é necessário — todo push implanta
+automaticamente.
 
 ### 7.1 Rollback
 

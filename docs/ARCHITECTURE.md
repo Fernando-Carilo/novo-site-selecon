@@ -130,9 +130,9 @@ flowchart LR
     Dev[git push\nfeat/fase-1-design-system] --> Source[Source\nCodeConnections]
     Source --> Validate[Validate\nlint/typecheck/test/build]
     Validate --> BuildImages[BuildImages\ndocker build + push ECR\ntag = commit]
-    BuildImages --> Migrations[Migrations\necs run-task\nprisma migrate deploy]
-    Migrations --> Deploy[Deploy\ncdk deploy SeleconPortalDevStack\n+ update-service web]
-    Deploy --> SmokeTest[SmokeTest\nGET / e GET /api/health/ready]
+    BuildImages --> Deploy[Deploy\ncdk deploy SeleconPortalDevStack\n+ update-service web]
+    Deploy --> Migrations[Migrations\necs run-task\nprisma migrate deploy]
+    Migrations --> SmokeTest[SmokeTest\nGET / e GET /api/health/ready]
 ```
 
 Cada estágio é um projeto CodeBuild dedicado (`infrastructure/cdk/lib/pipeline-stack.ts`),
@@ -147,20 +147,28 @@ Pontos de design relevantes:
   task definitions de produção sempre apontam para a tag do commit — nunca para `:dev` — via
   o contexto CDK `imageTag`, resolvido em `buildspec-images.yml` a partir de
   `CODEBUILD_RESOLVED_SOURCE_VERSION`.
-- **Migrações fora do container da API.** `prisma migrate deploy` roda como uma task Fargate
-  avulsa (`aws ecs run-task`) numa família dedicada (`selecon-portal-dev-migrate`), nunca
-  dentro do container da api em runtime e nunca reaproveitando a família `api` (que ainda
-  aponta para a imagem antiga no momento em que Migrations roda, antes de Deploy). O
+- **Migrações fora do container da API, e depois do Deploy.** `prisma migrate deploy` roda
+  como uma task Fargate avulsa (`aws ecs run-task`) numa família dedicada
+  (`selecon-portal-dev-migrate`), nunca dentro do container da api em runtime e nunca
+  reaproveitando a família `api` (mesmo a task definition atual da api já apontando para a
+  imagem do commit neste ponto, para não poluir o histórico de revisões do serviço real). O
   CodeBuild não tem acesso de rede ao RDS (privado à VPC, sem `vpcConfig` no projeto) — só a
   task Fargate, rodando dentro da VPC com a mesma rede/security groups da api, alcança o
-  banco.
-- **Duas stacks independentes.** `SeleconPortalDevStack` (RDS/Redis/S3/api/worker) e
-  `SeleconPortalPipelineStack` (CodePipeline/CodeBuild) não têm dependência de props uma na
-  outra — a pipeline pode ser criada antes da stack de dados existir. Isso resolve a
-  circularidade "Migrations precisa do RDS, que precisa de Deploy, que precisa de uma imagem
-  válida, que precisa de BuildImages, mas Migrations roda antes de Deploy": o estágio
-  Migrations detecta a ausência da stack/serviço e passa adiante (`exit 0`) apenas no
-  primeiríssimo run.
+  banco. Migrations roda DEPOIS de Deploy (não antes) — ver o ponto seguinte — e **falha,
+  nunca pula**, se a stack ou o serviço da api não existirem/não estiverem `ACTIVE` nesse
+  momento.
+- **Deploy antes de Migrations — resolve o bootstrap ovo-e-galinha sem "skip gracioso".**
+  `SeleconPortalDevStack` (RDS/Redis/S3/api/worker) e `SeleconPortalPipelineStack`
+  (CodePipeline/CodeBuild) não têm dependência de props uma na outra — a pipeline pode ser
+  criada antes da stack de dados existir. No primeiro run, é o estágio Deploy que cria
+  `SeleconPortalDevStack` pela primeira vez; ele já atualiza os três serviços para a imagem
+  do commit e espera todos atingirem steady state antes de passar adiante. Isso funciona
+  mesmo no primeiro run porque o health check usado para considerar o serviço da api estável
+  (`GET /api/health/ready`) só executa `SELECT 1` — não depende de nenhuma tabela migrada
+  (`apps/api/src/health/health.service.ts`). Uma versão anterior desta pipeline tinha
+  Migrations rodando antes de Deploy e "pulando" (`exit 0`) quando a stack ainda não
+  existia — isso deixava uma pipeline "bem-sucedida" no primeiro run sem nunca ter aplicado
+  nenhuma migração; corrigido invertendo a ordem (ver `docs/ASSUMPTIONS.md`, item 12).
 - **Validação automática de mudanças destrutivas.** `buildspec-deploy.yml` roda `cdk diff`
   antes de `cdk deploy` e falha o build (sem intervenção humana possível numa pipeline
   automatizada) se o diff mencionar remoção de VPC/ALB/cluster ou qualquer sinal de

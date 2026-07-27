@@ -23,10 +23,25 @@ export interface PipelineStackProps extends cdk.StackProps {
 const BUILD_IMAGE = codebuild.LinuxBuildImage.STANDARD_7_0;
 
 /**
- * Pipeline com os 6 estágios: Source -> Validate -> BuildImages -> Migrations -> Deploy
+ * Pipeline com os 6 estágios: Source -> Validate -> BuildImages -> Deploy -> Migrations
  * -> SmokeTest. Cada estágio usa seu próprio buildspec (buildspec-*.yml na raiz do
  * repositório) e projeto CodeBuild dedicado, para que uma falha em qualquer estágio
  * pare o pipeline antes do próximo.
+ *
+ * ORDEM IMPORTA: Deploy roda ANTES de Migrations (não depois). No primeiro run da
+ * pipeline, `SeleconPortalDevStack` ainda não existe — se Migrations rodasse antes de
+ * Deploy, não haveria RDS/serviço da api para migrar, e a única saída sem violar a regra
+ * "migrar antes de servir tráfego novo" seria pular a migração silenciosamente, o que
+ * deixaria uma pipeline "bem-sucedida" sem nunca ter aplicado o schema. Por isso a ordem
+ * é: BuildImages publica as imagens no ECR -> Deploy cria/atualiza
+ * `SeleconPortalDevStack` (RDS, api, worker) e o serviço `web` já apontando para a
+ * imagem do commit atual, e espera os 3 serviços atingirem steady state (o health check
+ * `/api/health/ready` só testa `SELECT 1`, não depende de nenhuma tabela migrada — ver
+ * apps/api/src/health/health.service.ts — então o serviço estabiliza mesmo antes da
+ * primeira migração) -> Migrations roda a task Fargate avulsa de `prisma migrate
+ * deploy` contra o schema real, agora que RDS e a rede da api já existem -> só então
+ * SmokeTest valida a URL pública. Migrations FALHA (nunca pula/ignora) se a stack ou o
+ * serviço da api não existirem neste ponto — depois de Deploy, ambos são obrigatórios.
  *
  * Esta stack só implanta `SeleconPortalDevStack` (nunca uma stack de PRD — não existe
  * nem uma referência a um ambiente de PRD neste repositório). Não cria, remove nem
@@ -44,6 +59,10 @@ const BUILD_IMAGE = codebuild.LinuxBuildImage.STANDARD_7_0;
  * uma task Fargate avulsa (`aws ecs run-task`, dentro da VPC) que recebe DATABASE_URL
  * pelos mesmos segredos do Secrets Manager já configurados na task definition da api —
  * ver buildspec-migrations.yml e packages/db/src/client.ts.
+ *
+ * A CodeConnection do GitHub usada por esta stack (`codeConnectionArn`) NUNCA é criada
+ * por este código — deve já existir e estar AVAILABLE (ver
+ * scripts/bootstrap-codepipeline-dev.sh, que valida isso antes de sintetizar/implantar).
  *
  * Nunca implantado neste sandbox — sem CodeConnection autorizada nem credenciais AWS
  * reais disponíveis.
@@ -120,8 +139,9 @@ export class PipelineStack extends cdk.Stack {
     // (aws ecs run-task), travada por pg_advisory_lock dentro do próprio processo
     // (ver apps/api/src/scripts/run-migrations.ts). Nenhuma credencial de banco passa
     // por aqui — a task recebe DATABASE_URL pelos segredos já configurados na task
-    // definition da api. Passa adiante sem erro se SeleconPortalDevStack ainda não
-    // existir (primeiro run da pipeline — ver buildspec-migrations.yml). ---
+    // definition da api. Roda DEPOIS do estágio Deploy (que já criou/atualizou
+    // SeleconPortalDevStack) — por isso FALHA (nunca pula) se a stack ou o serviço da
+    // api não existirem/não estiverem ACTIVE neste ponto — ver buildspec-migrations.yml. ---
     const migrationsProject = new codebuild.PipelineProject(this, "MigrationsProject", {
       buildSpec: codebuild.BuildSpec.fromSourceFilename("buildspec-migrations.yml"),
       environment: {
@@ -222,7 +242,6 @@ export class PipelineStack extends cdk.Stack {
 
     const sourceOutput = new codepipeline.Artifact("Source");
     const imagesOutput = new codepipeline.Artifact("Images");
-    const migrationsOutput = new codepipeline.Artifact("Migrations");
 
     const pipelineName = `selecon-portal-${config.tags.Ambiente}`;
 
@@ -265,23 +284,22 @@ export class PipelineStack extends cdk.Stack {
           ],
         },
         {
+          stageName: "Deploy",
+          actions: [
+            new codepipeline_actions.CodeBuildAction({
+              actionName: "CdkDeployAndUpdateServices",
+              project: deployProject,
+              input: imagesOutput,
+            }),
+          ],
+        },
+        {
           stageName: "Migrations",
           actions: [
             new codepipeline_actions.CodeBuildAction({
               actionName: "PrismaMigrateDeploy",
               project: migrationsProject,
               input: imagesOutput,
-              outputs: [migrationsOutput],
-            }),
-          ],
-        },
-        {
-          stageName: "Deploy",
-          actions: [
-            new codepipeline_actions.CodeBuildAction({
-              actionName: "CdkDeployAndUpdateServices",
-              project: deployProject,
-              input: migrationsOutput,
             }),
           ],
         },

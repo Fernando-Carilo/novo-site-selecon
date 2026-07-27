@@ -118,20 +118,19 @@ Forbidden`):
 - **Migrations via `aws ecs run-task`, nunca `docker run` local no CodeBuild.** O RDS é
   privado à VPC e o projeto CodeBuild não tem `vpcConfig` — não haveria rota de rede possível.
   A task de migração roda numa família dedicada (`selecon-portal-dev-migrate`), nunca
-  reaproveitando a família `api`, porque no momento em que Migrations roda (antes de Deploy) o
-  serviço da api ainda está com a imagem antiga — registrar sob a família `api` colidiria com
-  o que o serviço realmente usa.
+  reaproveitando a família `api` (mesmo a task definition atual da api já apontando para a
+  imagem do commit neste ponto — ver item 12), para não poluir o histórico de revisões do
+  serviço real com uma entrada que nunca foi usada por ele.
 - **Bootstrap ovo-e-galinha resolvido tornando as duas stacks independentes.** O primeiro
   `cdk deploy` de `SeleconPortalDevStack` precisa de uma imagem já publicada no ECR (o ECS
   espera o serviço estabilizar); a própria stack ainda não existe no primeiríssimo run da
-  pipeline. Resolvido em duas frentes: (a) `SeleconPortalPipelineStack` não depende de nenhum
-  output de `SeleconPortalDevStack` via props obrigatórias (os antigos `databaseSecretArn`/
+  pipeline. `SeleconPortalPipelineStack` não depende de nenhum output de
+  `SeleconPortalDevStack` via props obrigatórias (os antigos `databaseSecretArn`/
   `databaseHost` foram removidos — a única dependência remanescente,
   `webTargetGroupArn`/`apiTargetGroupArn`, é opcional e só afeta uma checagem de conveniência
-  no SmokeTest); (b) o estágio Migrations detecta a ausência da stack/serviço
-  (`cloudformation describe-stacks` retornando "não encontrado", ou o serviço da api não
-  `ACTIVE`) e passa adiante com `exit 0` só nesse caso, preservando a ordem "migrar antes de
-  implantar" em todos os runs seguintes.
+  no SmokeTest) — isso permite implantar a pipeline antes da stack de dados existir. A ordem
+  dos estágios (ver item 12) garante que a stack já exista antes de qualquer tentativa de
+  migração.
 - **Tagging imutável por commit.** As três imagens são publicadas com a tag do commit
   (`CODEBUILD_RESOLVED_SOURCE_VERSION:0:12`) e também com `:dev` (conveniência). As task
   definitions de api/worker (geridas pelo CDK) usam o contexto `imageTag`, nunca a tag `:dev`,
@@ -172,3 +171,39 @@ Forbidden`):
 Lição operacional para qualquer buildspec futuro: `bash -n`/`shellcheck` rodado diretamente
 contra o `.yml` não captura nenhuma dessas duas classes de bug (o parser YAML já terá
 corrompido o texto antes); é necessário extrair os comandos via um parser YAML real primeiro.
+
+## 12. Correção da ordem dos estágios: Deploy antes de Migrations, sem skip gracioso
+
+A primeira versão desta pipeline (item 11) usava a ordem Source → Validate → BuildImages →
+**Migrations → Deploy** → SmokeTest, com o estágio Migrations "pulando" (`exit 0`) sem aplicar
+nenhuma migração sempre que `SeleconPortalDevStack` ou o serviço da api ainda não existissem —
+o que é exatamente o caso no primeiríssimo run da pipeline. Isso foi identificado como um
+defeito real: uma pipeline "bem-sucedida" no primeiro run nunca chegava a aplicar nenhuma
+migração, e nada no fluxo forçava uma correção posterior automática.
+
+**Corrigido invertendo a ordem:** Source → Validate → BuildImages → **Deploy → Migrations** →
+SmokeTest. Deploy agora executa `cdk deploy SeleconPortalDevStack` (criando a stack já no
+primeiro run) e atualiza os três serviços para a imagem do commit, esperando-os atingir steady
+state, antes de Migrations rodar. Isso funciona mesmo no primeiríssimo run porque o health
+check usado para considerar o serviço da api estável (`GET /api/health/ready`) só executa
+`SELECT 1` — não depende de nenhuma tabela migrada (ver `apps/api/src/health/health.service.ts`)
+— então o ECS/ALB consideram o serviço saudável antes mesmo da primeira migração real.
+Migrations, rodando depois, **agora falha (nunca pula/ignora)** se a stack ou o serviço da api
+não existirem/não estiverem `ACTIVE` nesse ponto — essa situação passou a ser sempre um erro
+real (Deploy falhou silenciosamente, ou a ordem dos estágios foi alterada incorretamente),
+nunca mais um caso esperado de bootstrap.
+
+Arquivos afetados: `infrastructure/cdk/lib/pipeline-stack.ts` (ordem das stages e wiring de
+artefatos — `Deploy` agora consome o artefato `Images` diretamente, e `Migrations` também,
+eliminando o artefato intermediário `Migrations` que só existia para a ordem antiga),
+`buildspec-deploy.yml` e `buildspec-migrations.yml` (comentários de cabeçalho e a lógica de
+skip trocada por falha), `infrastructure/README.md`, `docs/ARCHITECTURE.md`,
+`docs/OPERATIONS_RUNBOOK.md`, `scripts/bootstrap-codepipeline-dev.sh`.
+
+Nesta mesma rodada, `scripts/bootstrap-codepipeline-dev.sh` também deixou de criar/reaproveitar
+uma AWS CodeConnection dinamicamente: passou a usar exclusivamente o ARN de uma conexão já
+existente e já `AVAILABLE`
+(`arn:aws:codeconnections:us-east-1:518825425828:connection/5ff3c8d6-23b7-4459-8023-52cba5c0e33c`),
+informado explicitamente pelo operador — o script valida existência e status e falha se
+qualquer um dos dois não for satisfeito, mas nunca chama `codestar-connections
+create-connection`.
