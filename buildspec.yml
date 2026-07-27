@@ -1,0 +1,82 @@
+version: 0.2
+
+# Buildspec único do Portal Selecon (DEV) — GitHub -> CodePipeline -> CodeBuild ->
+# Elastic Beanstalk (Docker, container único, "Docker running on 64bit Amazon Linux
+# 2023"). Substitui os 5 buildspec-*.yml da arquitetura ECS/CDK anterior (validate,
+# images, migrations, deploy, smoke), removidos. Migrações do Prisma agora rodam
+# dentro do próprio container, no boot, controladas por pg_advisory_lock — ver
+# docker/entrypoint.sh e apps/api/src/scripts/run-migrations.ts — nunca mais como uma
+# task ECS avulsa.
+#
+# Nota sobre o shell do CodeBuild: cada comando de "commands:" roda via /bin/sh (não
+# bash) — nunca usar "set -euo pipefail" diretamente aqui (dash, o /bin/sh do Amazon
+# Linux, não suporta a opção "pipefail" e encerraria o build com erro de sintaxe). O
+# CodeBuild já aborta o build sozinho em qualquer comando que retorne código != 0
+# (equivalente a "set -e"), então isso não faz falta. Se algum dia for necessária a
+# semântica de pipefail (checar o exit code do primeiro comando de um pipe), o
+# comando correspondente deve ser envolto explicitamente em `bash -lc '...'`.
+#
+# Nunca executado neste sandbox (sem credenciais AWS reais, sem acesso a registry
+# Docker — ver docs/ASSUMPTIONS.md).
+
+env:
+  variables:
+    AWS_DEFAULT_REGION: "us-east-1"
+    ECR_REPOSITORY_NAME: "selecon-portal/app-dev"
+    DATABASE_URL: "postgresql://selecon:selecon@localhost:5432/selecon_test"
+    REDIS_URL: "redis://localhost:6379"
+    NODE_ENV: "test"
+
+phases:
+  install:
+    runtime-versions:
+      nodejs: 22
+    commands:
+      - corepack enable
+      - corepack prepare pnpm@10 --activate
+      - apt-get update -y
+      - apt-get install -y postgresql redis-server
+      - service postgresql start
+      - service redis-server start || redis-server --daemonize yes
+      - until pg_isready -h localhost -p 5432; do sleep 1; done
+      - sudo -u postgres psql -c "CREATE USER selecon WITH PASSWORD 'selecon' SUPERUSER;"
+      - sudo -u postgres psql -c "CREATE DATABASE selecon_test OWNER selecon;"
+
+  pre_build:
+    commands:
+      - echo "Autenticando no ECR..."
+      - aws ecr get-login-password --region "$AWS_DEFAULT_REGION" | docker login --username AWS --password-stdin "$AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com"
+      - pnpm install --frozen-lockfile
+      - pnpm --filter @selecon/db exec prisma migrate deploy
+
+  build:
+    commands:
+      - pnpm format
+      - pnpm lint
+      - pnpm typecheck
+      - pnpm test
+      - pnpm build
+      - IMAGE_TAG="${CODEBUILD_RESOLVED_SOURCE_VERSION:0:12}"
+      - ECR_URI="$AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$ECR_REPOSITORY_NAME"
+      - echo "Construindo imagem Docker (container único web+api), tag $IMAGE_TAG..."
+      - docker build -f Dockerfile -t "$ECR_URI:$IMAGE_TAG" -t "$ECR_URI:dev" .
+      - echo "Publicando imagem no ECR..."
+      - docker push "$ECR_URI:$IMAGE_TAG"
+      - docker push "$ECR_URI:dev"
+      - |
+        aws ecr describe-images --repository-name "$ECR_REPOSITORY_NAME" --image-ids imageTag="$IMAGE_TAG" \
+          --query "imageDetails[0].{tag:imageTags[0],digest:imageDigest,pushedAt:imagePushedAt}" --output table
+      - echo "Gerando Dockerrun.aws.json a partir do template..."
+      - sed "s#__IMAGE_URI__#$ECR_URI:$IMAGE_TAG#" Dockerrun.aws.json.template > Dockerrun.aws.json
+      - cat Dockerrun.aws.json
+
+  post_build:
+    commands:
+      - echo "Pacote de implantação do Elastic Beanstalk pronto — Dockerrun.aws.json publicado como artefato desta build."
+
+# Único arquivo necessário no pacote de implantação do Elastic Beanstalk (plataforma
+# Docker, container único, imagem já publicada no ECR pelo estágio Build) — o Dockerfile
+# em si NÃO precisa estar no pacote, o EB só lê o Dockerrun.aws.json e puxa a imagem.
+artifacts:
+  files:
+    - Dockerrun.aws.json

@@ -207,3 +207,81 @@ existente e já `AVAILABLE`
 informado explicitamente pelo operador — o script valida existência e status e falha se
 qualquer um dos dois não for satisfeito, mas nunca chama `codestar-connections
 create-connection`.
+
+## 13. Abandono completo de ECS/Fargate/CDK em favor de Elastic Beanstalk (Docker)
+
+A pedido explícito ("Precisamos abandonar a arquitetura atual baseada em ECS/Fargate e
+CDK para deploy da aplicação... O padrão definitivo deste projeto deve ser o mesmo
+utilizado nos outros projetos do Instituto Selecon: GitHub -> CodePipeline -> CodeBuild
+-> Elastic Beanstalk com Docker"), toda a arquitetura de implantação construída nas
+rodadas anteriores (itens 11 e 12 acima) foi **removida do repositório**: o app CDK
+inteiro (`infrastructure/cdk/`), os 5 `buildspec-*.yml` (validate/images/migrations/
+deploy/smoke) e os scripts `bootstrap-aws-dev.sh`/`bootstrap-codepipeline-dev.sh`/
+`build-push-deploy-dev.sh`/`rollback-ecs-dev.sh` foram apagados (não apenas
+descontinuados — de fato removidos do Git; consultar o histórico se precisar).
+
+**Recursos da arquitetura anterior não foram excluídos da conta AWS.** VPC
+`vpc-0b5fb2dcfb604f371`, cluster ECS `selecon-portal-dev`, ALB
+`selecon-portal-dev-alb`, serviço `selecon-portal-dev-web` e os 3 repositórios ECR
+(`selecon-portal/{web,api,worker}-dev`) continuam existindo — nada neste repositório os
+toca, cria ou remove automaticamente. A decisão de desativá-los manualmente (fora deste
+fluxo) fica a critério de um operador humano.
+
+Nova arquitetura, decisões de design e por quê:
+
+- **Container único (web + api) em vez de 3 serviços separados.** `Dockerfile` (raiz)
+  builda `apps/web` (Next.js standalone) e `apps/api` (NestJS) na mesma imagem, rodando
+  lado a lado via `docker/entrypoint.sh`. Isso é viável sem nenhuma mudança de código
+  porque `apps/web`'s proxy server-to-server (`apps/web/app/api/[...path]/route.ts`) já
+  usa `API_INTERNAL_URL` com fallback para `http://localhost:3001/api` — exatamente o
+  necessário quando os dois processos rodam no mesmo container/localhost.
+- **`apps/worker` (BullMQ) fica fora deste ambiente DEV.** Nenhuma fila assíncrona real é
+  processada em produção ainda. O código do worker continua no repositório para
+  desenvolvimento local (`docker-compose`, `pnpm docker:build:worker`), só não é
+  implantado nesta pipeline.
+- **Redis local efêmero no container, sem ElastiCache.** `apps/api` exige `REDIS_URL`
+  (validação obrigatória de schema em `packages/config/src/env.ts`), mas o único uso
+  real de Redis em `apps/api` é o próprio `HealthService.readiness()` (nenhuma outra
+  rota usa `ioredis`/BullMQ diretamente). Em vez de provisionar um ElastiCache só para
+  satisfazer essa validação, o container instala e inicia um `redis-server` local (sem
+  persistência, `--save ""`) — decisão explicitamente permitida pelo requisito 6, que só
+  proíbe colocar **PostgreSQL** dentro do container, nunca Redis.
+- **`GET /api/health` novo, com status HTTP real.** Adicionada uma rota
+  (`apps/api/src/health/health.controller.ts`) que reaproveita
+  `HealthService.readiness()` mas, diferente de `/api/health/ready` (pré-existente,
+  mantida como está para não afetar outros consumidores/testes), responde HTTP 503
+  (não 200) quando alguma dependência está fora do ar — necessário para o health check
+  do Elastic Beanstalk realmente detectar uma instância não saudável via código HTTP.
+- **Migrações no boot do container, nunca mais via task ECS avulsa.** Reaproveita
+  `apps/api/src/scripts/run-migrations.ts` (já existente, com `pg_advisory_lock`), agora
+  chamado por `docker/entrypoint.sh` antes de `apps/api`/`apps/web` subirem. Se a
+  migração falhar, o container inteiro falha — nenhuma implantação com schema quebrado é
+  considerada bem-sucedida pelo Elastic Beanstalk.
+- **CloudFormation puro, sem CDK, para RDS e pipeline.** Nenhuma entrega desta rodada
+  (buildspec, Dockerfile, Dockerrun, configuração de CodePipeline/CodeBuild, scripts)
+  usa CDK — consistente com o padrão dos outros projetos do Instituto e com o pedido
+  explícito de simplificação. `infrastructure/cloudformation/rds.yml` e
+  `infrastructure/cloudformation/pipeline.yml` são templates independentes entre si.
+- **Application/Environment do Elastic Beanstalk via AWS CLI, não CloudFormation.**
+  `AWS::ElasticBeanstalk::Environment` tem um schema de `OptionSettings` propenso a
+  efeitos colaterais em atualizações incrementais (algumas opções exigem substituição
+  completa do ambiente se alteradas via CloudFormation). Para uma única instância DEV,
+  criar/atualizar via `aws elasticbeanstalk create-environment`/`update-environment`
+  (em `scripts/bootstrap-elasticbeanstalk-dev.sh`) dá controle mais direto e mais fácil
+  de auditar do que depurar um `UPDATE_ROLLBACK_FAILED` de uma stack CloudFormation de EB.
+- **Plano de mudanças antes de aplicar, via change sets do CloudFormation.**
+  `scripts/bootstrap-rds-dev.sh` e `scripts/bootstrap-codepipeline-eb-dev.sh` usam
+  `create-change-set` + `describe-change-set` (mostrando Add/Modify/Remove por recurso)
+  antes de `execute-change-set`, com confirmação explícita — o equivalente, para
+  CloudFormation, ao gate "digite SIM" já usado nos scripts anteriores.
+- **DATABASE_URL nunca no Git.** Composta em tempo de bootstrap a partir do segredo do
+  Secrets Manager (usuário/senha) + endpoint do RDS (host/porta/nome, saídas do
+  CloudFormation) e definida diretamente como propriedade de ambiente do Elastic
+  Beanstalk — uma das opções explicitamente permitidas pelo requisito de segurança
+  ("usar variáveis do Elastic Beanstalk, Secrets Manager ou SSM").
+- **Validado com `cfn-lint`** (instalado localmente neste sandbox, sem exigir
+  credenciais AWS — puramente análise estática dos templates): encontrou e corrigiu 2
+  bugs reais antes da entrega — um caractere não-ASCII (`—`) em campos
+  `GroupDescription` de `AWS::EC2::SecurityGroup` (que só aceitam um conjunto restrito
+  de caracteres ASCII) e uma versão do engine PostgreSQL (`16.6`) já sinalizada como
+  obsoleta para criação de novas instâncias RDS.

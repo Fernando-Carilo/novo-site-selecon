@@ -1,14 +1,19 @@
 #!/usr/bin/env bash
-# Validação somente-leitura do ambiente AWS DEV do Portal Selecon (seção 24 do prompt
-# mestre). Roda no AWS CloudShell (ou qualquer shell com aws-cli configurado) — nunca
-# executado neste sandbox de desenvolvimento (sem credenciais AWS reais aqui). Não
-# modifica nenhum recurso; só consulta e imprime status.
+# Validação somente-leitura do ambiente AWS DEV do Portal Selecon — arquitetura
+# Elastic Beanstalk (Docker, container único). Roda no AWS CloudShell (ou qualquer
+# shell com aws-cli configurado) — nunca executado neste sandbox de desenvolvimento
+# (sem credenciais AWS reais aqui). Não modifica nenhum recurso; só consulta e
+# imprime status.
 
 set -uo pipefail
 
 REGION="${AWS_REGION:-us-east-1}"
-CLUSTER_NAME="selecon-portal-dev"
-ALB_NAME="selecon-portal-dev-alb"
+EB_APPLICATION_NAME="selecon-portal"
+EB_ENVIRONMENT_NAME="selecon-portal-dev"
+RDS_INSTANCE_ID="selecon-portal-dev"
+ECR_REPOSITORY_NAME="selecon-portal/app-dev"
+PIPELINE_NAME="selecon-portal-dev"
+CODECONNECTION_ARN="arn:aws:codeconnections:us-east-1:518825425828:connection/5ff3c8d6-23b7-4459-8023-52cba5c0e33c"
 
 pass() { printf '  \033[1;32m✔\033[0m %s\n' "$1"; }
 fail() { printf '  \033[1;31m✘\033[0m %s\n' "$1"; FAILED=1; }
@@ -20,96 +25,66 @@ section "Conta e região"
 ACCOUNT="$(aws sts get-caller-identity --query Account --output text 2>/dev/null)"
 if [[ -n "$ACCOUNT" ]]; then pass "Conta: $ACCOUNT | Região: $REGION"; else fail "Não foi possível autenticar com a AWS"; fi
 
-section "Cluster ECS e serviços"
-CLUSTER_STATUS="$(aws ecs describe-clusters --clusters "$CLUSTER_NAME" --query 'clusters[0].status' --output text 2>/dev/null)"
-[[ "$CLUSTER_STATUS" == "ACTIVE" ]] && pass "Cluster $CLUSTER_NAME: ACTIVE" || fail "Cluster $CLUSTER_NAME: $CLUSTER_STATUS"
-
-for SERVICE in selecon-portal-dev-web selecon-portal-dev-api selecon-portal-dev-worker; do
-  INFO="$(aws ecs describe-services --cluster "$CLUSTER_NAME" --services "$SERVICE" \
-    --query 'services[0].{status:status,desired:desiredCount,running:runningCount}' --output json 2>/dev/null)"
-  if [[ -z "$INFO" || "$INFO" == "null" ]]; then
-    fail "Serviço $SERVICE: não encontrado"
-  else
-    DESIRED=$(echo "$INFO" | node -pe "JSON.parse(require('fs').readFileSync(0)).desired" 2>/dev/null)
-    RUNNING=$(echo "$INFO" | node -pe "JSON.parse(require('fs').readFileSync(0)).running" 2>/dev/null)
-    if [[ "$DESIRED" == "$RUNNING" && "$RUNNING" != "0" ]]; then
-      pass "Serviço $SERVICE: desired=$DESIRED running=$RUNNING (steady state)"
-    else
-      fail "Serviço $SERVICE: desired=$DESIRED running=$RUNNING (fora do steady state)"
-    fi
-  fi
-done
-
-section "Application Load Balancer e target groups"
-ALB_ARN="$(aws elbv2 describe-load-balancers --names "$ALB_NAME" --query 'LoadBalancers[0].LoadBalancerArn' --output text 2>/dev/null)"
-if [[ -n "$ALB_ARN" && "$ALB_ARN" != "None" ]]; then
-  pass "ALB $ALB_NAME encontrado"
-  aws elbv2 describe-target-groups --load-balancer-arn "$ALB_ARN" --query 'TargetGroups[].TargetGroupName' --output text 2>/dev/null \
-    | tr '\t' '\n' | while read -r TG; do
-      [[ -z "$TG" ]] && continue
-      TG_ARN="$(aws elbv2 describe-target-groups --names "$TG" --query 'TargetGroups[0].TargetGroupArn' --output text)"
-      HEALTHY="$(aws elbv2 describe-target-health --target-group-arn "$TG_ARN" \
-        --query "length(TargetHealthDescriptions[?TargetHealth.State=='healthy'])" --output text)"
-      TOTAL="$(aws elbv2 describe-target-health --target-group-arn "$TG_ARN" \
-        --query "length(TargetHealthDescriptions)" --output text)"
-      if [[ "$HEALTHY" == "$TOTAL" && "$TOTAL" != "0" ]]; then
-        pass "Target group $TG: $HEALTHY/$TOTAL saudáveis"
-      else
-        fail "Target group $TG: $HEALTHY/$TOTAL saudáveis"
-      fi
-    done
-else
-  fail "ALB $ALB_NAME não encontrado"
-fi
+section "RDS PostgreSQL"
+DB_STATUS="$(aws rds describe-db-instances --db-instance-identifier "$RDS_INSTANCE_ID" --query 'DBInstances[0].DBInstanceStatus' --output text 2>/dev/null)"
+[[ "$DB_STATUS" == "available" ]] && pass "RDS $RDS_INSTANCE_ID: available" || fail "RDS $RDS_INSTANCE_ID: ${DB_STATUS:-não encontrado}"
 
 section "ECR"
-for REPO in selecon-portal/web-dev selecon-portal/api-dev selecon-portal/worker-dev; do
-  LATEST="$(aws ecr describe-images --repository-name "$REPO" --query 'sort_by(imageDetails,&imagePushedAt)[-1].imageTags' --output text 2>/dev/null)"
-  if [[ -n "$LATEST" && "$LATEST" != "None" ]]; then
-    pass "$REPO — última tag: $LATEST"
+LATEST="$(aws ecr describe-images --repository-name "$ECR_REPOSITORY_NAME" --query 'sort_by(imageDetails,&imagePushedAt)[-1].imageTags' --output text 2>/dev/null)"
+if [[ -n "$LATEST" && "$LATEST" != "None" ]]; then
+  pass "$ECR_REPOSITORY_NAME — última tag: $LATEST"
+else
+  fail "$ECR_REPOSITORY_NAME — sem imagens ou repositório não encontrado"
+fi
+
+section "Elastic Beanstalk"
+EB_INFO="$(aws elasticbeanstalk describe-environments --application-name "$EB_APPLICATION_NAME" \
+  --environment-names "$EB_ENVIRONMENT_NAME" \
+  --query 'Environments[0].{status:Status,health:Health,version:VersionLabel,url:CNAME}' --output json 2>/dev/null)"
+if [[ -n "$EB_INFO" && "$EB_INFO" != "null" ]]; then
+  STATUS=$(echo "$EB_INFO" | node -pe "JSON.parse(require('fs').readFileSync(0)).status" 2>/dev/null)
+  HEALTH=$(echo "$EB_INFO" | node -pe "JSON.parse(require('fs').readFileSync(0)).health" 2>/dev/null)
+  VERSION=$(echo "$EB_INFO" | node -pe "JSON.parse(require('fs').readFileSync(0)).version" 2>/dev/null)
+  EB_URL=$(echo "$EB_INFO" | node -pe "JSON.parse(require('fs').readFileSync(0)).url" 2>/dev/null)
+  if [[ "$STATUS" == "Ready" && "$HEALTH" == "Green" ]]; then
+    pass "Environment $EB_ENVIRONMENT_NAME: status=$STATUS health=$HEALTH versao=$VERSION"
   else
-    fail "$REPO — sem imagens ou repositório não encontrado"
+    fail "Environment $EB_ENVIRONMENT_NAME: status=$STATUS health=$HEALTH versao=$VERSION"
   fi
-done
+  echo "    URL: http://$EB_URL"
+else
+  fail "Environment $EB_ENVIRONMENT_NAME não encontrado"
+  EB_URL=""
+fi
 
-section "RDS"
-DB_STATUS="$(aws rds describe-db-instances --db-instance-identifier selecon-portal-dev --query 'DBInstances[0].DBInstanceStatus' --output text 2>/dev/null)"
-[[ "$DB_STATUS" == "available" ]] && pass "RDS selecon-portal-dev: available" || fail "RDS selecon-portal-dev: $DB_STATUS"
-
-section "ElastiCache (Redis/Valkey)"
-CACHE_STATUS="$(aws elasticache describe-cache-clusters --cache-cluster-id selecon-portal-dev --query 'CacheClusters[0].CacheClusterStatus' --output text 2>/dev/null)"
-[[ "$CACHE_STATUS" == "available" ]] && pass "ElastiCache selecon-portal-dev: available" || fail "ElastiCache selecon-portal-dev: $CACHE_STATUS"
-
-section "CodePipeline / CodeBuild / CodeConnection"
-PIPELINE_STATE="$(aws codepipeline get-pipeline-state --name selecon-portal-dev --query 'stageStates[].{stage:stageName,status:latestExecution.status}' --output json 2>/dev/null)"
+section "CodePipeline"
+PIPELINE_STATE="$(aws codepipeline get-pipeline-state --name "$PIPELINE_NAME" --query 'stageStates[].{stage:stageName,status:latestExecution.status}' --output json 2>/dev/null)"
 if [[ -n "$PIPELINE_STATE" && "$PIPELINE_STATE" != "null" ]]; then
-  pass "Pipeline selecon-portal-dev encontrada"
+  pass "Pipeline $PIPELINE_NAME encontrada"
   echo "$PIPELINE_STATE" | node -pe "
     JSON.parse(require('fs').readFileSync(0)).map(s => '    ' + s.stage + ': ' + (s.status || 'sem execução ainda')).join('\n')
   " 2>/dev/null
 else
-  fail "Pipeline selecon-portal-dev não encontrada"
+  fail "Pipeline $PIPELINE_NAME não encontrada"
 fi
 
-CONNECTION_STATUS="$(aws codeconnections list-connections --query "Connections[?ConnectionName=='selecon-portal-github'].ConnectionStatus | [0]" --output text 2>/dev/null)"
+section "CodeConnection"
+CONNECTION_STATUS="$(aws codestar-connections get-connection --connection-arn "$CODECONNECTION_ARN" --query 'Connection.ConnectionStatus' --output text 2>/dev/null)"
 if [[ "$CONNECTION_STATUS" == "AVAILABLE" ]]; then
   pass "CodeConnection: AVAILABLE"
-elif [[ -n "$CONNECTION_STATUS" && "$CONNECTION_STATUS" != "None" ]]; then
-  fail "CodeConnection: $CONNECTION_STATUS (autorização manual pendente)"
 else
-  fail "CodeConnection não encontrada"
+  fail "CodeConnection: ${CONNECTION_STATUS:-não encontrada}"
 fi
 
 section "URL pública"
-ALB_DNS="$(aws elbv2 describe-load-balancers --names "$ALB_NAME" --query 'LoadBalancers[0].DNSName' --output text 2>/dev/null)"
-if [[ -n "$ALB_DNS" && "$ALB_DNS" != "None" ]]; then
-  ALB_URL="http://$ALB_DNS"
-  HTTP_CODE="$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "$ALB_URL/" 2>/dev/null || echo "000")"
-  API_HTTP_CODE="$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "$ALB_URL/api/health/ready" 2>/dev/null || echo "000")"
-  [[ "$HTTP_CODE" == "200" ]] && pass "$ALB_URL/ — HTTP $HTTP_CODE" || fail "$ALB_URL/ — HTTP $HTTP_CODE"
-  [[ "$API_HTTP_CODE" == "200" ]] && pass "$ALB_URL/api/health/ready — HTTP $API_HTTP_CODE" || fail "$ALB_URL/api/health/ready — HTTP $API_HTTP_CODE"
+if [[ -n "${EB_URL:-}" && "$EB_URL" != "None" ]]; then
+  APP_URL="http://$EB_URL"
+  HTTP_CODE="$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "$APP_URL/" 2>/dev/null || echo "000")"
+  API_HTTP_CODE="$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "$APP_URL/api/health" 2>/dev/null || echo "000")"
+  [[ "$HTTP_CODE" == "200" ]] && pass "$APP_URL/ — HTTP $HTTP_CODE" || fail "$APP_URL/ — HTTP $HTTP_CODE"
+  [[ "$API_HTTP_CODE" == "200" ]] && pass "$APP_URL/api/health — HTTP $API_HTTP_CODE" || fail "$APP_URL/api/health — HTTP $API_HTTP_CODE"
 else
-  fail "Não foi possível obter o DNS do ALB $ALB_NAME"
+  fail "Não foi possível obter a URL do environment $EB_ENVIRONMENT_NAME"
 fi
 
 section "Resumo"

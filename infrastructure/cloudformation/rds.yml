@@ -1,0 +1,136 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  Portal Selecon (DEV) — RDS PostgreSQL externo + security groups, para o novo
+  caminho de implantação via Elastic Beanstalk (Docker, container único). Nunca cria,
+  altera ou remove o VPC existente, apenas referencia-o pelos parâmetros abaixo. Não
+  provisiona ElastiCache/Redis — o container roda um redis-server local efêmero (ver
+  docs/ASSUMPTIONS.md). Stack independente de infrastructure/cloudformation/pipeline.yml.
+
+Parameters:
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Default: vpc-0b5fb2dcfb604f371
+    Description: VPC existente (nunca criada ou removida por esta stack).
+  SubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+    Default: "subnet-087fddfd8000fe905,subnet-0cb67ad4109c9151f"
+    Description: >
+      Subnets existentes para o subnet group do RDS. DEV usa as subnets públicas já
+      provisionadas (sem acesso público real: PubliclyAccessible=false + security
+      group restrito) — promover para subnets privadas dedicadas ao migrar para
+      HML/PRD.
+  DatabaseName:
+    Type: String
+    Default: selecon_portal_dev
+  DBInstanceIdentifier:
+    Type: String
+    Default: selecon-portal-dev
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues: [dev]
+
+Resources:
+  AppSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: >-
+        Instancias EC2 do ambiente Elastic Beanstalk do Portal Selecon (DEV),
+        atribuido explicitamente ao ambiente via aws:autoscaling:launchconfiguration
+        (ver scripts/bootstrap-elasticbeanstalk-dev.sh).
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+          Description: HTTP público — ambiente EB de instância única (sem load balancer).
+      SecurityGroupEgress:
+        - IpProtocol: "-1"
+          CidrIp: 0.0.0.0/0
+          Description: Saída irrestrita (acesso ao RDS, ECR, CloudWatch etc.).
+      Tags:
+        - { Key: Projeto, Value: portal-selecon }
+        - { Key: Ambiente, Value: !Ref Environment }
+
+  DataSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Acesso ao RDS do Portal Selecon, apenas do AppSecurityGroup.
+      VpcId: !Ref VpcId
+      Tags:
+        - { Key: Projeto, Value: portal-selecon }
+        - { Key: Ambiente, Value: !Ref Environment }
+
+  DataSecurityGroupIngressFromApp:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref DataSecurityGroup
+      IpProtocol: tcp
+      FromPort: 5432
+      ToPort: 5432
+      SourceSecurityGroupId: !Ref AppSecurityGroup
+      Description: PostgreSQL a partir das instâncias do Elastic Beanstalk.
+
+  DBSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: Subnets do RDS do Portal Selecon (DEV).
+      SubnetIds: !Ref SubnetIds
+      Tags:
+        - { Key: Projeto, Value: portal-selecon }
+        - { Key: Ambiente, Value: !Ref Environment }
+
+  DatabaseSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub "selecon-portal/${Environment}/database"
+      Description: Credenciais do RDS do Portal Selecon (DEV) — senha gerada, nunca no Git.
+      GenerateSecretString:
+        SecretStringTemplate: '{"username":"selecon_portal"}'
+        GenerateStringKey: password
+        ExcludePunctuation: true
+        PasswordLength: 32
+      Tags:
+        - { Key: Projeto, Value: portal-selecon }
+        - { Key: Ambiente, Value: !Ref Environment }
+
+  DatabaseInstance:
+    Type: AWS::RDS::DBInstance
+    DeletionPolicy: Snapshot
+    UpdateReplacePolicy: Snapshot
+    Properties:
+      DBInstanceIdentifier: !Ref DBInstanceIdentifier
+      Engine: postgres
+      EngineVersion: "16.9"
+      DBInstanceClass: db.t4g.micro
+      AllocatedStorage: "20"
+      StorageEncrypted: true
+      MultiAZ: false
+      PubliclyAccessible: false
+      BackupRetentionPeriod: 3
+      DeletionProtection: false
+      DBName: !Ref DatabaseName
+      DBSubnetGroupName: !Ref DBSubnetGroup
+      VPCSecurityGroups:
+        - !Ref DataSecurityGroup
+      MasterUsername: !Sub "{{resolve:secretsmanager:${DatabaseSecret}:SecretString:username}}"
+      MasterUserPassword: !Sub "{{resolve:secretsmanager:${DatabaseSecret}:SecretString:password}}"
+      Tags:
+        - { Key: Projeto, Value: portal-selecon }
+        - { Key: Ambiente, Value: !Ref Environment }
+
+Outputs:
+  DatabaseEndpointAddress:
+    Value: !GetAtt DatabaseInstance.Endpoint.Address
+  DatabaseEndpointPort:
+    Value: !GetAtt DatabaseInstance.Endpoint.Port
+  DatabaseSecretArn:
+    Value: !Ref DatabaseSecret
+  DatabaseName:
+    Value: !Ref DatabaseName
+  AppSecurityGroupId:
+    Value: !Ref AppSecurityGroup
+    Description: Atribuir às instâncias EC2 do ambiente Elastic Beanstalk.
+  DataSecurityGroupId:
+    Value: !Ref DataSecurityGroup

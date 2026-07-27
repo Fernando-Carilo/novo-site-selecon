@@ -66,49 +66,50 @@ recentes e os bugs reais já encontrados e corrigidos por essa suíte.
 
 ## 7. Implantação DEV na AWS
 
-O caminho principal de implantação é uma pipeline CodePipeline + CodeBuild (Source →
-Validate → BuildImages → Deploy → Migrations → SmokeTest — Deploy vem antes de Migrations,
-não depois: ver `docs/ASSUMPTIONS.md` item 12), disparada automaticamente a cada
-`git push origin feat/fase-1-design-system`. Detalhes completos (arquitetura, cada estágio,
-bugs encontrados e corrigidos) em `infrastructure/README.md` e `docs/ARCHITECTURE.md`.
+> A arquitetura de implantação mudou: **ECS Fargate + AWS CDK foi abandonado** em favor
+> de **Elastic Beanstalk (Docker, container único)**, o mesmo padrão usado nos outros
+> projetos do Instituto Selecon — ver `docs/ASSUMPTIONS.md` para a justificativa.
 
-Configuração única, feita por um operador humano com credenciais reais no CloudShell:
+O caminho principal de implantação é uma pipeline CodePipeline + CodeBuild de 3 estágios
+(Source → Build → Deploy), disparada automaticamente a cada
+`git push origin feat/fase-1-design-system`. Detalhes completos em
+`infrastructure/README.md` e `docs/ARCHITECTURE.md`.
+
+Bootstrap único, feito por um operador humano com credenciais reais no CloudShell, nesta
+ordem (cada script mostra o plano de mudanças e pede confirmação explícita):
 
 ```bash
-scripts/bootstrap-codepipeline-dev.sh
+scripts/bootstrap-rds-dev.sh              # RDS PostgreSQL + security groups
+scripts/bootstrap-elasticbeanstalk-dev.sh # Application + Environment do Elastic Beanstalk
+scripts/bootstrap-codepipeline-eb-dev.sh  # ECR + CodeBuild + CodePipeline
 ```
 
-Esse script **valida** (nunca cria) a AWS CodeConnection do GitHub já existente e já
-`AVAILABLE` (ARN fixo, ver o próprio script), falhando se ela não existir ou não estiver
-disponível, e então `cdk deploy` **somente** `SeleconPortalPipelineStack`. Nunca faz `docker
-build`. A partir daí, nenhum comando manual adicional é necessário — todo push implanta
-automaticamente.
+A partir daí, nenhum comando manual adicional é necessário — todo push implanta
+automaticamente: lint/typecheck/test/build, `docker build` da imagem única (web+api),
+push para o ECR, e implantação no Elastic Beanstalk. As migrações do Prisma rodam
+**dentro do próprio container**, no boot, antes da aplicação aceitar requisições — nunca
+mais como uma task ECS avulsa.
 
 ### 7.1 Rollback
 
-O deployment circuit breaker do ECS (`deploymentCircuitBreaker: { enable: true, rollback:
-true }`, configurado nos serviços `api`/`worker` geridos pelo CDK) já reverte
-automaticamente uma implantação que falhe ao estabilizar. Para um rollback manual (ex.:
-uma implantação estabilizou mas se mostrou problemática depois), use:
+Para reverter uma implantação problemática do Elastic Beanstalk para a versão anterior:
 
 ```bash
-scripts/rollback-ecs-dev.sh
+scripts/rollback-eb-dev.sh
 ```
 
-Esse script descobre a família da task definition em uso via `describe-services` (nunca
-presume que a família tem o mesmo nome do serviço), identifica a revisão anterior e, com
-confirmação explícita, aplica `update-service --force-new-deployment` para ela. **Nunca
-desfaz migrações de banco automaticamente** — se a revisão anterior depende de um schema
-mais antigo, avalie manualmente antes de reverter.
+Esse script lista as versões da aplicação, identifica a versão atual e a anterior via
+`describe-environments`/`describe-application-versions` (nunca presumidas por nome) e,
+com confirmação explícita, aplica `update-environment --version-label <anterior>`.
+**Nunca desfaz migrações de banco automaticamente** — se a versão anterior depende de um
+schema mais antigo, avalie manualmente antes de reverter.
 
-### 7.2 Ferramentas de recuperação manual (não são mais o caminho principal)
+### 7.2 Ferramentas de recuperação/validação
 
 | Script | Uso |
 | ------ | --- |
-| `scripts/check-aws-dev.sh` | Somente leitura — inventário do ambiente |
-| `scripts/bootstrap-aws-dev.sh` | `cdk deploy` manual e isolado de `SeleconPortalDevStack` (assume imagens já publicadas no ECR) |
-| `scripts/build-push-deploy-dev.sh` | Build+push+deploy manual completo num único CloudShell — usar só se a pipeline estiver indisponível |
+| `scripts/check-aws-dev.sh` | Somente leitura — inventário do ambiente (RDS, ECR, Elastic Beanstalk, CodePipeline, CodeConnection, URL pública) |
 
-Nenhum desses procedimentos (incluindo a pipeline) foi executado nesta sessão — o código é
-`cdk synth`-validado e os buildspecs foram validados localmente (`bash -n`, `shellcheck`,
-parsing YAML), mas o deploy real é responsabilidade do operador com credenciais AWS.
+Nenhum desses procedimentos (incluindo a pipeline) foi executado nesta sessão — o código
+foi validado localmente (`bash -n`, `shellcheck`, parsing YAML, `cfn-lint`), mas o deploy
+real é responsabilidade do operador com credenciais AWS.

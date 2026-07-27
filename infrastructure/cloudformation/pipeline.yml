@@ -1,0 +1,250 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  Portal Selecon (DEV) — GitHub -> CodePipeline -> CodeBuild -> Elastic Beanstalk
+  (Docker, container único). 3 estágios: Source, Build, Deploy. Usa uma AWS
+  CodeConnection JÁ EXISTENTE E JÁ AUTORIZADA (nunca cria uma nova — ver
+  CodeConnectionArn abaixo). Não cria, altera ou remove ECS/Fargate/VPC/ALB — essa
+  arquitetura foi completamente abandonada (ver docs/ASSUMPTIONS.md). Stack
+  independente de infrastructure/cloudformation/rds.yml.
+
+Parameters:
+  CodeConnectionArn:
+    Type: String
+    Default: "arn:aws:codeconnections:us-east-1:518825425828:connection/5ff3c8d6-23b7-4459-8023-52cba5c0e33c"
+    Description: >
+      ARN de uma AWS CodeConnection já existente e já AVAILABLE. Esta stack nunca cria
+      uma CodeConnection — só a referencia.
+  RepositoryOwner:
+    Type: String
+    Default: Fernando-Carilo
+  RepositoryName:
+    Type: String
+    Default: novo-site-selecon
+  BranchName:
+    Type: String
+    Default: feat/fase-1-design-system
+  EbApplicationName:
+    Type: String
+    Default: selecon-portal
+    Description: Application do Elastic Beanstalk (criada/reutilizada por scripts/bootstrap-elasticbeanstalk-dev.sh).
+  EbEnvironmentName:
+    Type: String
+    Default: selecon-portal-dev
+    Description: Environment DEV do Elastic Beanstalk (criado/reutilizado por scripts/bootstrap-elasticbeanstalk-dev.sh).
+  EcrRepositoryName:
+    Type: String
+    Default: selecon-portal/app-dev
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues: [dev]
+
+Resources:
+  AppRepository:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: !Ref EcrRepositoryName
+      ImageScanningConfiguration:
+        ScanOnPush: true
+      LifecyclePolicy:
+        LifecyclePolicyText: >-
+          {"rules":[{"rulePriority":1,"description":"Manter as 20 imagens mais
+          recentes","selection":{"tagStatus":"any","countType":"imageCountMoreThan","countNumber":20},"action":{"type":"expire"}}]}
+      Tags:
+        - { Key: Projeto, Value: portal-selecon }
+        - { Key: Ambiente, Value: !Ref Environment }
+
+  ArtifactBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      LifecycleConfiguration:
+        Rules:
+          - Id: ExpireArtifacts
+            Status: Enabled
+            ExpirationInDays: 30
+      Tags:
+        - { Key: Projeto, Value: portal-selecon }
+        - { Key: Ambiente, Value: !Ref Environment }
+
+  CodeBuildServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: { Service: codebuild.amazonaws.com }
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: CodeBuildLogs
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/*"
+        - PolicyName: CodeBuildArtifacts
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: [s3:GetObject, s3:PutObject, s3:GetBucketLocation]
+                Resource:
+                  - !GetAtt ArtifactBucket.Arn
+                  - !Sub "${ArtifactBucket.Arn}/*"
+        - PolicyName: CodeBuildEcr
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: ecr:GetAuthorizationToken
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - ecr:BatchCheckLayerAvailability
+                  - ecr:PutImage
+                  - ecr:InitiateLayerUpload
+                  - ecr:UploadLayerPart
+                  - ecr:CompleteLayerUpload
+                  - ecr:DescribeImages
+                Resource: !GetAtt AppRepository.Arn
+
+  CodeBuildProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: !Sub "selecon-portal-${Environment}-build"
+      ServiceRole: !GetAtt CodeBuildServiceRole.Arn
+      Artifacts: { Type: CODEPIPELINE }
+      Source: { Type: CODEPIPELINE, BuildSpec: buildspec.yml }
+      TimeoutInMinutes: 60
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_LARGE
+        Image: aws/codebuild/amazonlinux2-x86_64-standard:5.0
+        PrivilegedMode: true # necessário para `docker build`/`docker push`
+        EnvironmentVariables:
+          - { Name: AWS_ACCOUNT_ID, Value: !Ref "AWS::AccountId" }
+          - { Name: AWS_DEFAULT_REGION, Value: !Ref "AWS::Region" }
+          - { Name: ECR_REPOSITORY_NAME, Value: !Ref EcrRepositoryName }
+      Tags:
+        - { Key: Projeto, Value: portal-selecon }
+        - { Key: Ambiente, Value: !Ref Environment }
+
+  CodePipelineServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: { Service: codepipeline.amazonaws.com }
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: PipelineArtifacts
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: [s3:GetObject, s3:PutObject, s3:GetBucketVersioning, s3:GetBucketLocation]
+                Resource:
+                  - !GetAtt ArtifactBucket.Arn
+                  - !Sub "${ArtifactBucket.Arn}/*"
+        - PolicyName: PipelineCodeConnection
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: codestar-connections:UseConnection
+                Resource: !Ref CodeConnectionArn
+        - PolicyName: PipelineCodeBuild
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: [codebuild:StartBuild, codebuild:BatchGetBuilds]
+                Resource: !GetAtt CodeBuildProject.Arn
+        - PolicyName: PipelineElasticBeanstalk
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - elasticbeanstalk:CreateApplicationVersion
+                  - elasticbeanstalk:DescribeApplicationVersions
+                  - elasticbeanstalk:DescribeEnvironments
+                  - elasticbeanstalk:DescribeEvents
+                  - elasticbeanstalk:UpdateEnvironment
+                  - elasticbeanstalk:DescribeConfigurationSettings
+                  - elasticloadbalancing:Describe*
+                  - autoscaling:Describe*
+                  - ec2:DescribeInstances
+                  - ec2:DescribeSecurityGroups
+                  - cloudformation:Describe*
+                  - cloudformation:GetTemplate
+                  - s3:GetObject
+                Resource: "*" # restringir por ARN específico do app/environment antes de HML/PRD
+
+  Pipeline:
+    Type: AWS::CodePipeline::Pipeline
+    Properties:
+      Name: selecon-portal-dev
+      RoleArn: !GetAtt CodePipelineServiceRole.Arn
+      ArtifactStore: { Type: S3, Location: !Ref ArtifactBucket }
+      Stages:
+        - Name: Source
+          Actions:
+            - Name: GitHub
+              ActionTypeId:
+                Category: Source
+                Owner: AWS
+                Provider: CodeStarSourceConnection
+                Version: "1"
+              Configuration:
+                ConnectionArn: !Ref CodeConnectionArn
+                FullRepositoryId: !Sub "${RepositoryOwner}/${RepositoryName}"
+                BranchName: !Ref BranchName
+              OutputArtifacts: [{ Name: SourceOutput }]
+        - Name: Build
+          Actions:
+            - Name: BuildAndPush
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Provider: CodeBuild
+                Version: "1"
+              Configuration: { ProjectName: !Ref CodeBuildProject }
+              InputArtifacts: [{ Name: SourceOutput }]
+              OutputArtifacts: [{ Name: BuildOutput }]
+        - Name: Deploy
+          Actions:
+            - Name: ElasticBeanstalk
+              ActionTypeId:
+                Category: Deploy
+                Owner: AWS
+                Provider: ElasticBeanstalk
+                Version: "1"
+              Configuration:
+                ApplicationName: !Ref EbApplicationName
+                EnvironmentName: !Ref EbEnvironmentName
+              InputArtifacts: [{ Name: BuildOutput }]
+
+Outputs:
+  PipelineName:
+    Value: !Ref Pipeline
+  AppRepositoryUri:
+    Value: !GetAtt AppRepository.RepositoryUri
+  ArtifactBucketName:
+    Value: !Ref ArtifactBucket

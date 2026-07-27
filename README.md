@@ -24,7 +24,7 @@ packages/
   observability/ Logger estruturado + bootstrap OpenTelemetry
   config/        tsconfig base, eslint config, validação de env
 e2e/             Suíte Playwright de ponta a ponta (fora do workspace pnpm)
-infrastructure/  CDK (TypeScript) — pipeline, ECS, alarmes; scripts de ativação AWS
+infrastructure/  Templates CloudFormation (RDS, pipeline) para o Elastic Beanstalk
 docs/            Arquitetura, decisões (ADR), segurança, migração, operação, testes
 ```
 
@@ -75,30 +75,30 @@ pnpm build
 
 ## Infraestrutura e implantação na AWS
 
-O código de infraestrutura (`infrastructure/cdk`) está pronto e validado via `cdk synth`
-(sem credenciais reais neste sandbox — nenhum recurso AWS foi provisionado por esta sessão).
+Arquitetura de implantação: `GitHub -> AWS CodePipeline -> AWS CodeBuild -> AWS Elastic
+Beanstalk (Docker, container único)` — o mesmo padrão usado nos outros projetos do
+Instituto Selecon. **A arquitetura anterior (ECS Fargate + AWS CDK) foi abandonada** — ver
+`docs/ASSUMPTIONS.md`. O código de infraestrutura (`infrastructure/cloudformation`, CloudFormation
+puro) está pronto e validado localmente (`cfn-lint`), sem credenciais reais neste sandbox —
+nenhum recurso AWS foi provisionado por esta sessão.
 
-**Caminho principal (pipeline automatizada):** CodePipeline + CodeBuild fazem build,
-lint/typecheck/test, build das imagens Docker, push para o ECR, `cdk deploy`, migrações
-Prisma e smoke tests a cada push em `feat/fase-1-design-system`. Configuração única (um
-operador humano, uma vez, com credenciais reais):
+**Bootstrap único** (um operador humano, uma vez, com credenciais reais, nesta ordem —
+cada script mostra o plano de mudanças e pede confirmação explícita):
 
 ```bash
-scripts/bootstrap-codepipeline-dev.sh   # valida a CodeConnection já existente e cria a pipeline
+scripts/bootstrap-rds-dev.sh              # RDS PostgreSQL + security groups
+scripts/bootstrap-elasticbeanstalk-dev.sh # Application + Environment do Elastic Beanstalk
+scripts/bootstrap-codepipeline-eb-dev.sh  # ECR + CodeBuild + CodePipeline
 ```
 
-A partir daí, o fluxo normal é apenas `git push origin feat/fase-1-design-system` — nada
-mais roda manualmente. Detalhes completos em `docs/OPERATIONS_RUNBOOK.md` e
-`docs/ARCHITECTURE.md`.
-
-**Ferramentas de recuperação manual** (não são mais o caminho principal; usar apenas se
-a pipeline estiver indisponível ou para diagnóstico isolado):
+A partir daí, o fluxo normal é apenas `git push origin feat/fase-1-design-system` — a
+pipeline builda, testa, publica a imagem Docker (web+api no mesmo container — ver
+`Dockerfile`/`docker/entrypoint.sh`) e implanta automaticamente. Detalhes completos em
+`docs/OPERATIONS_RUNBOOK.md` e `docs/ARCHITECTURE.md`.
 
 ```bash
-scripts/check-aws-dev.sh            # somente leitura — inventário do que já existe
-scripts/bootstrap-aws-dev.sh        # cdk deploy manual de SeleconPortalDevStack (sem build)
-scripts/build-push-deploy-dev.sh    # build+push+deploy manual completo, num único CloudShell
-scripts/rollback-ecs-dev.sh         # reverte um serviço ECS para a task definition anterior
+scripts/check-aws-dev.sh   # somente leitura — inventário do ambiente
+scripts/rollback-eb-dev.sh # reverte o Elastic Beanstalk para a versão anterior
 ```
 
 ## Status do projeto

@@ -125,68 +125,55 @@ sequenceDiagram
 
 ## 6. Implantação DEV — CI/CD
 
+> Esta seção descreve a arquitetura ATUAL (Elastic Beanstalk). A arquitetura anterior
+> (ECS Fargate + AWS CDK, 6 estágios de pipeline) foi **abandonada** por decisão
+> explícita — ver `docs/ASSUMPTIONS.md` para a justificativa e o histórico.
+
 ```mermaid
 flowchart LR
-    Dev[git push\nfeat/fase-1-design-system] --> Source[Source\nCodeConnections]
-    Source --> Validate[Validate\nlint/typecheck/test/build]
-    Validate --> BuildImages[BuildImages\ndocker build + push ECR\ntag = commit]
-    BuildImages --> Deploy[Deploy\ncdk deploy SeleconPortalDevStack\n+ update-service web]
-    Deploy --> Migrations[Migrations\necs run-task\nprisma migrate deploy]
-    Migrations --> SmokeTest[SmokeTest\nGET / e GET /api/health/ready]
+    Dev[git push\nfeat/fase-1-design-system] --> Source[Source\nCodeConnection]
+    Source --> Build[Build\nlint/typecheck/test/build\ndocker build + push ECR\ngera Dockerrun.aws.json]
+    Build --> Deploy[Deploy\nElastic Beanstalk\ncontainer unico web+api]
 ```
 
-Cada estágio é um projeto CodeBuild dedicado (`infrastructure/cdk/lib/pipeline-stack.ts`),
-com seu próprio `buildspec-*.yml` na raiz do repositório. Uma falha em qualquer estágio
-para o pipeline antes do próximo — nada é implantado se Validate falhar, nenhuma imagem
-com problema chega ao ECS se BuildImages falhar, etc.
+3 estágios apenas: **Source** (CodeStarSourceConnection), **Build** (um único projeto
+CodeBuild, `buildspec.yml` na raiz), **Deploy** (ação nativa `ElasticBeanstalk` do
+CodePipeline). Definidos em `infrastructure/cloudformation/pipeline.yml` (CloudFormation
+puro, sem CDK).
 
 Pontos de design relevantes:
 
-- **Tags imutáveis por commit.** Cada imagem é publicada com duas tags: a tag imutável do
-  commit (`web-dev:<sha12>`) e a tag `:dev` mutável (conveniência para inspeção manual). As
-  task definitions de produção sempre apontam para a tag do commit — nunca para `:dev` — via
-  o contexto CDK `imageTag`, resolvido em `buildspec-images.yml` a partir de
-  `CODEBUILD_RESOLVED_SOURCE_VERSION`.
-- **Migrações fora do container da API, e depois do Deploy.** `prisma migrate deploy` roda
-  como uma task Fargate avulsa (`aws ecs run-task`) numa família dedicada
-  (`selecon-portal-dev-migrate`), nunca dentro do container da api em runtime e nunca
-  reaproveitando a família `api` (mesmo a task definition atual da api já apontando para a
-  imagem do commit neste ponto, para não poluir o histórico de revisões do serviço real). O
-  CodeBuild não tem acesso de rede ao RDS (privado à VPC, sem `vpcConfig` no projeto) — só a
-  task Fargate, rodando dentro da VPC com a mesma rede/security groups da api, alcança o
-  banco. Migrations roda DEPOIS de Deploy (não antes) — ver o ponto seguinte — e **falha,
-  nunca pula**, se a stack ou o serviço da api não existirem/não estiverem `ACTIVE` nesse
-  momento.
-- **Deploy antes de Migrations — resolve o bootstrap ovo-e-galinha sem "skip gracioso".**
-  `SeleconPortalDevStack` (RDS/Redis/S3/api/worker) e `SeleconPortalPipelineStack`
-  (CodePipeline/CodeBuild) não têm dependência de props uma na outra — a pipeline pode ser
-  criada antes da stack de dados existir. No primeiro run, é o estágio Deploy que cria
-  `SeleconPortalDevStack` pela primeira vez; ele já atualiza os três serviços para a imagem
-  do commit e espera todos atingirem steady state antes de passar adiante. Isso funciona
-  mesmo no primeiro run porque o health check usado para considerar o serviço da api estável
-  (`GET /api/health/ready`) só executa `SELECT 1` — não depende de nenhuma tabela migrada
-  (`apps/api/src/health/health.service.ts`). Uma versão anterior desta pipeline tinha
-  Migrations rodando antes de Deploy e "pulando" (`exit 0`) quando a stack ainda não
-  existia — isso deixava uma pipeline "bem-sucedida" no primeiro run sem nunca ter aplicado
-  nenhuma migração; corrigido invertendo a ordem (ver `docs/ASSUMPTIONS.md`, item 12).
-- **Validação automática de mudanças destrutivas.** `buildspec-deploy.yml` roda `cdk diff`
-  antes de `cdk deploy` e falha o build (sem intervenção humana possível numa pipeline
-  automatizada) se o diff mencionar remoção de VPC/ALB/cluster ou qualquer sinal de
-  substituição (`Replacement`) envolvendo o serviço `web` existente.
-- **Nenhuma credencial de banco no CodeBuild.** As migrações usam os mesmos segredos do
-  Secrets Manager já injetados na task definition da api — nunca uma variável de ambiente do
-  CodeBuild.
-- **Rollback.** O `deploymentCircuitBreaker` do ECS reverte automaticamente uma implantação
-  que falhe ao estabilizar. Um rollback manual entre revisões de task definition (sem tocar
-  em migrações de banco) é feito por `scripts/rollback-ecs-dev.sh`.
+- **Container único (web + api).** `Dockerfile` (raiz) builda `apps/web` (Next.js,
+  standalone) e `apps/api` (NestJS) na mesma imagem — ver `docker/entrypoint.sh`, que
+  sobe os dois processos lado a lado e propaga sinais de encerramento entre eles.
+  `apps/worker` (BullMQ) fica fora deste ambiente DEV.
+- **Sem ElastiCache — Redis local efêmero no container.** `apps/api` exige a variável
+  `REDIS_URL` (validação de schema em `packages/config`), usada apenas pelo endpoint de
+  health check. Em vez de provisionar um ElastiCache só para isso, o container roda um
+  `redis-server` local, sem persistência, iniciado pelo próprio `docker/entrypoint.sh`.
+- **Migrações no boot do container, não mais via ECS/Fargate.** `prisma migrate deploy`
+  roda dentro do container, controlado por `pg_advisory_lock`
+  (`apps/api/src/scripts/run-migrations.ts`), ANTES de `apps/api`/`apps/web` começarem a
+  atender requisições. Se a migração falhar, o container inteiro falha — o Elastic
+  Beanstalk nunca marca uma implantação com schema quebrado como bem-sucedida.
+- **Tags imutáveis por commit.** A imagem é publicada no ECR com a tag do commit
+  (`CODEBUILD_RESOLVED_SOURCE_VERSION`) e também com `:dev` (conveniência). O
+  `Dockerrun.aws.json` gerado pelo `buildspec.yml` sempre aponta para a tag do commit.
+- **RDS externo, nunca dentro do container.** PostgreSQL via RDS
+  (`infrastructure/cloudformation/rds.yml`), `DATABASE_URL` composta a partir do
+  Secrets Manager e definida como propriedade de ambiente do Elastic Beanstalk (nunca
+  no Git) por `scripts/bootstrap-elasticbeanstalk-dev.sh`.
+- **Rollback.** `scripts/rollback-eb-dev.sh` volta o Environment para a versão anterior
+  do Elastic Beanstalk (nunca desfaz migrações de banco automaticamente).
 
 Ver `infrastructure/README.md` para a lista completa de comandos e `docs/ASSUMPTIONS.md`
-para o histórico de bugs encontrados e corrigidos durante a construção desta pipeline.
+para o histórico da mudança de arquitetura e os bugs encontrados e corrigidos.
 
 ## 7. Estado desta versão do documento
 
 Todos os módulos de domínio descritos neste documento (conteúdo/CMS, concursos, atendimento,
 denúncias, anúncios, candidato, admin/RBAC) têm implementação completa de regras de negócio,
 validada por testes de integração reais (Postgres) e pela suíte E2E — ver `docs/TEST_REPORT.md`.
-A infraestrutura AWS (`infrastructure/cdk`) está pronta e `cdk synth`-validada, mas nenhum
-recurso foi provisionado nesta sessão (sandbox sem credenciais reais).
+A infraestrutura AWS (`infrastructure/cloudformation`) está pronta e validada localmente
+(YAML + `cfn-lint`), mas nenhum recurso foi provisionado nesta sessão (sandbox sem
+credenciais reais).
