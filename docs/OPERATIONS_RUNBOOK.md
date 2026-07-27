@@ -64,9 +64,50 @@ não é executada contra `pnpm dev` porque o objetivo é validar o comportamento
 (inclusive o proxy `/api/*` de `apps/web`). Ver `docs/TEST_REPORT.md` para os resultados mais
 recentes e os bugs reais já encontrados e corrigidos por essa suíte.
 
-## 7. Produção (AWS)
+## 7. Implantação DEV na AWS
 
-Deploy, rollback, migrations controladas, dashboards e alarmes CloudWatch, e o procedimento de
-ativação inicial (CodeConnection manual + `scripts/bootstrap-aws-dev.sh`) estão documentados em
-`infrastructure/README.md`. Nenhum desses procedimentos foi executado nesta sessão — o código é
-`cdk synth`-validado, mas o deploy real é responsabilidade do operador com credenciais AWS.
+O caminho principal de implantação é uma pipeline CodePipeline + CodeBuild (Source →
+Validate → BuildImages → Migrations → Deploy → SmokeTest), disparada automaticamente a
+cada `git push origin feat/fase-1-design-system`. Detalhes completos (arquitetura, cada
+estágio, bugs encontrados e corrigidos) em `infrastructure/README.md` e `docs/ARCHITECTURE.md`.
+
+Configuração única, feita por um operador humano com credenciais reais no CloudShell:
+
+```bash
+scripts/bootstrap-codepipeline-dev.sh
+```
+
+Esse script cria/reaproveita a AWS CodeConnection do GitHub, imprime o ARN e as instruções
+de autorização manual no Console (o único passo humano real de todo o fluxo), espera o
+status ficar `AVAILABLE`, e então `cdk deploy` **somente** `SeleconPortalPipelineStack`.
+Nunca faz `docker build`. A partir daí, nenhum comando manual adicional é necessário —
+todo push implanta automaticamente.
+
+### 7.1 Rollback
+
+O deployment circuit breaker do ECS (`deploymentCircuitBreaker: { enable: true, rollback:
+true }`, configurado nos serviços `api`/`worker` geridos pelo CDK) já reverte
+automaticamente uma implantação que falhe ao estabilizar. Para um rollback manual (ex.:
+uma implantação estabilizou mas se mostrou problemática depois), use:
+
+```bash
+scripts/rollback-ecs-dev.sh
+```
+
+Esse script descobre a família da task definition em uso via `describe-services` (nunca
+presume que a família tem o mesmo nome do serviço), identifica a revisão anterior e, com
+confirmação explícita, aplica `update-service --force-new-deployment` para ela. **Nunca
+desfaz migrações de banco automaticamente** — se a revisão anterior depende de um schema
+mais antigo, avalie manualmente antes de reverter.
+
+### 7.2 Ferramentas de recuperação manual (não são mais o caminho principal)
+
+| Script | Uso |
+| ------ | --- |
+| `scripts/check-aws-dev.sh` | Somente leitura — inventário do ambiente |
+| `scripts/bootstrap-aws-dev.sh` | `cdk deploy` manual e isolado de `SeleconPortalDevStack` (assume imagens já publicadas no ECR) |
+| `scripts/build-push-deploy-dev.sh` | Build+push+deploy manual completo num único CloudShell — usar só se a pipeline estiver indisponível |
+
+Nenhum desses procedimentos (incluindo a pipeline) foi executado nesta sessão — o código é
+`cdk synth`-validado e os buildspecs foram validados localmente (`bash -n`, `shellcheck`,
+parsing YAML), mas o deploy real é responsabilidade do operador com credenciais AWS.

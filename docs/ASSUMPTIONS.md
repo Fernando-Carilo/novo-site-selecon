@@ -83,7 +83,7 @@ apenas cosmético. Os novos componentes ficam disponíveis, tipados, com lint/ty
 verificados, prontos para adoção incremental em código novo ou em uma fase futura dedicada a essa
 migração.
 
-## 10. `buildspec-migrations.yml` (estágio Migrations do pipeline) tem um bug conhecido, não corrigido nesta rodada
+## 10. `buildspec-migrations.yml` (estágio Migrations do pipeline) — pendência resolvida
 
 Ao preparar a ativação manual do ambiente DEV (`scripts/build-push-deploy-dev.sh`), foram
 encontrados e corrigidos bugs reais que impediam qualquer execução de `prisma migrate deploy`
@@ -93,16 +93,82 @@ para o advisory lock) nunca foi uma dependência do projeto. Corrigido em
 `apps/api/src/scripts/run-migrations.ts` (usa o Prisma Client já existente via `$queryRawUnsafe`
 para o lock, sem depender de `pg`) + `prisma` movida para `dependencies`.
 
-`scripts/build-push-deploy-dev.sh` já usa a versão corrigida via `aws ecs run-task` (a única
-forma de alcançar o RDS, que é privado à VPC — nem CloudShell nem os projetos CodeBuild do
-pipeline, que não têm `vpcConfig`, conseguem se conectar diretamente a ele).
+A pendência registrada originalmente aqui — `buildspec-migrations.yml` ainda usar `docker run`
+local, inalcançável por estar o RDS privado à VPC — **foi resolvida na rodada seguinte** (ver
+item 11): o estágio agora usa `aws ecs run-task` com uma task definition dedicada.
 
-**Pendência real:** `buildspec-migrations.yml` (usado pelo estágio Migrations de
-`SeleconPortalPipelineStack`, que não foi tocado nesta rodada — só `SeleconPortalDevStack` foi
-ativada) ainda tem a versão antiga e quebrada (tenta `docker run` local com `pg` inexistente, e
-o `MigrationsProject` do CodeBuild não tem `vpcConfig` nem permissão IAM para `ecs:RunTask`).
-Antes de ativar `SeleconPortalPipelineStack`, `buildspec-migrations.yml` e
-`infrastructure/cdk/lib/pipeline-stack.ts` precisam do mesmo tratamento: substituir o
-`docker run` por `aws ecs run-task` usando a task definition da api (mesmas subnets/security
-groups do serviço), com as permissões IAM (`ecs:RunTask`, `ecs:DescribeTasks`, `iam:PassRole`)
-adicionadas ao papel do `MigrationsProject`.
+## 11. Substituição completa do caminho de implantação por CodePipeline + CodeBuild
+
+A pedido explícito ("PARE a estratégia de build Docker no AWS CloudShell... Quero substituir
+`scripts/build-push-deploy-dev.sh` por uma implantação profissional usando AWS CodePipeline +
+CodeBuild + ECR + ECS/CDK"), o caminho principal de implantação deixou de ser um script manual
+de CloudShell e passou a ser a pipeline dos 6 estágios já existente em
+`infrastructure/cdk/lib/pipeline-stack.ts` (Source → Validate → BuildImages → Migrations →
+Deploy → SmokeTest). `scripts/build-push-deploy-dev.sh` e `scripts/bootstrap-aws-dev.sh` foram
+rebaixados a ferramentas de recuperação manual (banner explícito no topo de cada arquivo);
+`scripts/bootstrap-codepipeline-dev.sh` (novo) é o único script que ativa a pipeline em si, e
+`scripts/rollback-ecs-dev.sh` (novo) cobre rollback operacional de ECS sem tocar em migrações
+de banco.
+
+Decisões e bugs relevantes desta rodada, todos verificados **sem** credenciais AWS reais nem
+acesso a registry Docker (ambos confirmados indisponíveis neste sandbox:
+`aws sts get-caller-identity` retorna `InvalidClientTokenId`; `docker pull` retorna `403
+Forbidden`):
+
+- **Migrations via `aws ecs run-task`, nunca `docker run` local no CodeBuild.** O RDS é
+  privado à VPC e o projeto CodeBuild não tem `vpcConfig` — não haveria rota de rede possível.
+  A task de migração roda numa família dedicada (`selecon-portal-dev-migrate`), nunca
+  reaproveitando a família `api`, porque no momento em que Migrations roda (antes de Deploy) o
+  serviço da api ainda está com a imagem antiga — registrar sob a família `api` colidiria com
+  o que o serviço realmente usa.
+- **Bootstrap ovo-e-galinha resolvido tornando as duas stacks independentes.** O primeiro
+  `cdk deploy` de `SeleconPortalDevStack` precisa de uma imagem já publicada no ECR (o ECS
+  espera o serviço estabilizar); a própria stack ainda não existe no primeiríssimo run da
+  pipeline. Resolvido em duas frentes: (a) `SeleconPortalPipelineStack` não depende de nenhum
+  output de `SeleconPortalDevStack` via props obrigatórias (os antigos `databaseSecretArn`/
+  `databaseHost` foram removidos — a única dependência remanescente,
+  `webTargetGroupArn`/`apiTargetGroupArn`, é opcional e só afeta uma checagem de conveniência
+  no SmokeTest); (b) o estágio Migrations detecta a ausência da stack/serviço
+  (`cloudformation describe-stacks` retornando "não encontrado", ou o serviço da api não
+  `ACTIVE`) e passa adiante com `exit 0` só nesse caso, preservando a ordem "migrar antes de
+  implantar" em todos os runs seguintes.
+- **Tagging imutável por commit.** As três imagens são publicadas com a tag do commit
+  (`CODEBUILD_RESOLVED_SOURCE_VERSION:0:12`) e também com `:dev` (conveniência). As task
+  definitions de api/worker (geridas pelo CDK) usam o contexto `imageTag`, nunca a tag `:dev`,
+  em implantações reais da pipeline — a stack só usa `:dev` como fallback para um `cdk
+  synth`/`cdk diff` manual sem contexto.
+- **Preservação de propriedades de task definition.** Toda transformação de task definition
+  (migração e serviço `web`) usa `del()` apenas dos campos imutáveis que
+  `describe-task-definition` devolve mas `register-task-definition` rejeita como entrada
+  (`taskDefinitionArn`, `revision`, `status`, `requiresAttributes`, `compatibilities`,
+  `registeredAt`, `registeredBy`, `deregisteredAt`) — nunca uma lista branca de campos, que
+  descartaria silenciosamente volumes/tags/`ephemeralStorage`/etc. não previstos.
+- **Bug de `jq` encontrado e corrigido antes de chegar a qualquer arquivo final:**
+  `.taskDefinition | .containerDefinitions = (.taskDefinition.containerDefinitions | ...)`
+  falha com `Cannot iterate over null (null)` porque, após o pipe para `.taskDefinition`, uma
+  referência subsequente a `.taskDefinition.containerDefinitions` procura uma chave aninhada
+  inexistente. Padrão correto, usado em ambos os buildspecs:
+  `.taskDefinition as $td | $td | .containerDefinitions = ($td.containerDefinitions | ...)`.
+  Verificado isoladamente com `jq` standalone antes e depois da correção.
+- **Duas classes de bug de YAML nos buildspecs, encontradas sistematicamente (não por
+  inspeção visual):** parseando cada um dos 5 `buildspec-*.yml` com `yaml.safe_load` do Python
+  e checando que todo item de `commands:` é uma `str` (não um `dict`), depois reconstruindo um
+  script bash sintético (join dos comandos) e rodando `bash -n` + `shellcheck` nele.
+  1. *Colon+espaço vira mapeamento implícito:* um item de `commands:` como
+     `- echo "texto: $VAR"`, sem aspas YAML envolvendo o item inteiro, é interpretado como um
+     mapeamento (`echo "texto` → `$VAR"`) por causa da ambiguidade de fluxo-em-bloco do YAML.
+     Corrigido envolvendo o comando inteiro em aspas simples no nível do YAML:
+     `- 'echo "texto: $VAR"'`. Encontradas 3 ocorrências: duas introduzidas nesta rodada
+     (`buildspec-migrations.yml`, `buildspec-deploy.yml`) e uma pré-existente, de uma rodada
+     anterior (`buildspec-validate.yml`, linha do `pnpm audit`).
+  2. *Folding de linha quebra continuação de bash:* um item de `commands:` escrito como um
+     escalar simples de duas linhas terminado em `\` (continuação de bash pretendida) tem sua
+     quebra de linha substituída por um único espaço pelo YAML antes mesmo do bash processar o
+     texto — o `\` termina antes de um espaço literal, não de uma quebra de linha real.
+     Corrigido convertendo esses itens para escalares de bloco (`- |`), que preservam quebras
+     de linha literais. Duas ocorrências, ambas em `buildspec-deploy.yml` (`cdk synth`/`cdk
+     deploy` com seus blocos `|| { ...; exit 1; }`).
+
+Lição operacional para qualquer buildspec futuro: `bash -n`/`shellcheck` rodado diretamente
+contra o `.yml` não captura nenhuma dessas duas classes de bug (o parser YAML já terá
+corrompido o texto antes); é necessário extrair os comandos via um parser YAML real primeiro.

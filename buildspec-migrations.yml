@@ -1,48 +1,130 @@
 version: 0.2
 
-# Estágio Migrations do pipeline (seção 12/15/24 do prompt mestre) — execução única e
-# controlada, nunca em cada réplica da API, e nunca `prisma migrate dev` neste ambiente.
-# DATABASE_URL vem do Secrets Manager (nunca do código-fonte ou de variável em texto
-# puro no CodeBuild). Nunca executado neste sandbox — sem RDS real provisionado.
+# Estágio Migrations do pipeline — execução única e controlada de `prisma migrate
+# deploy`, nunca `prisma migrate dev`, nunca em cada réplica da API. Nunca executado
+# neste sandbox (sem credenciais AWS reais nem RDS provisionado aqui).
 #
-# Trava contra execução concorrente: usa pg_advisory_lock (nível de sessão) em torno do
-# `prisma migrate deploy` — se duas execuções do pipeline colidirem, a segunda aguarda a
-# primeira liberar a trava antes de aplicar (nunca aplica migrações em paralelo).
+# Por que "aws ecs run-task" e não "docker run" local no CodeBuild: o RDS é privado à
+# VPC (sem acesso público) e o projeto CodeBuild não tem vpcConfig — não alcançaria o
+# banco de jeito nenhum. A task de migração roda com a MESMA rede/security groups do
+# serviço da api (descobertos em runtime, nunca hardcoded) e recebe DATABASE_URL pelos
+# mesmos segredos do Secrets Manager já configurados na task definition da api (ver
+# infrastructure/cdk/lib/selecon-portal-stack.ts + packages/db/src/client.ts) — nenhuma
+# credencial de banco passa pelo ambiente do CodeBuild.
+#
+# Por que uma task definition PRÓPRIA ("selecon-portal-dev-migrate") em vez de reusar a
+# família "selecon-portal-dev-api": a imagem desta implantação (tag = commit atual)
+# ainda não é a que o serviço da api está rodando nesse momento (o estágio Deploy, que
+# atualiza o serviço, roda DEPOIS deste). Registrar sob a família da api colidiria com o
+# que o serviço realmente usa; uma família dedicada evita qualquer ambiguidade.
+#
+# Por que este estágio não falha se SeleconPortalDevStack ainda não existir: no
+# primeiríssimo run da pipeline (bootstrap), a stack de dados (RDS/api/worker) ainda não
+# foi criada — ela só existe depois que o estágio Deploy, que roda em seguida, executar
+# `cdk deploy` pela primeira vez. Não há nada para migrar ainda; este estágio detecta
+# esse caso e passa adiante sem erro, em vez de falhar tentando alcançar um RDS/serviço
+# que ainda não existe.
+
+env:
+  variables:
+    STACK_NAME: "SeleconPortalDevStack"
+    CLUSTER_NAME: "selecon-portal-dev"
+    API_SERVICE_NAME: "selecon-portal-dev-api"
+    MIGRATE_FAMILY: "selecon-portal-dev-migrate"
 
 phases:
   pre_build:
     commands:
       - set -euo pipefail
       - export IMAGE_TAG=$(node -pe "require('./image-tag.json').imageTag")
-      - aws ecr get-login-password --region "$AWS_REGION" | docker login --username AWS --password-stdin "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
-      # DB_USERNAME/DB_PASSWORD vêm do Secrets Manager (tipo SECRETS_MANAGER na definição
-      # do CodeBuild em pipeline-stack.ts) — nunca ficam em texto puro no repositório.
-      - export DATABASE_URL="postgresql://${DB_USERNAME}:${DB_PASSWORD}@${DB_HOST}:5432/${DB_NAME}"
+      - 'echo "Commit/tag de imagem: $IMAGE_TAG"'
 
   build:
     commands:
       - set -euo pipefail
       - |
-        docker run --rm \
-          -e DATABASE_URL="$DATABASE_URL" \
-          "$API_REPOSITORY_URI:$IMAGE_TAG" \
-          node -e "
-            const { Client } = require('pg');
-            (async () => {
-              const client = new Client({ connectionString: process.env.DATABASE_URL });
-              await client.connect();
-              await client.query('SELECT pg_advisory_lock(872364)');
-              try {
-                require('child_process').execSync(
-                  'node_modules/.bin/prisma migrate deploy --schema packages/db/prisma/schema.prisma',
-                  { stdio: 'inherit' },
-                );
-              } finally {
-                await client.query('SELECT pg_advisory_unlock(872364)');
-                await client.end();
-              }
-            })().catch((err) => { console.error(err); process.exit(1); });
-          "
+        STACK_STATUS=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" \
+          --query 'Stacks[0].StackStatus' --output text 2>/dev/null || echo "NOT_FOUND")
+        if [ "$STACK_STATUS" = "NOT_FOUND" ]; then
+          echo "$STACK_NAME ainda não existe (primeiro run da pipeline) — nada para migrar ainda."
+          echo "O estágio Deploy, a seguir, vai criá-la; migrações serão aplicadas a partir do próximo run."
+          exit 0
+        fi
+
+        API_SERVICE_JSON=$(aws ecs describe-services --cluster "$CLUSTER_NAME" --services "$API_SERVICE_NAME" \
+          --query 'services[0]')
+        API_SERVICE_STATUS=$(echo "$API_SERVICE_JSON" | jq -r '.status // "NOT_FOUND"')
+        if [ "$API_SERVICE_STATUS" != "ACTIVE" ]; then
+          echo "Serviço $API_SERVICE_NAME ainda não está ACTIVE (status: $API_SERVICE_STATUS) — nada para migrar ainda."
+          exit 0
+        fi
+
+        # Nunca presumir que a família da task definition é igual ao nome do serviço —
+        # descobre-se a definição REALMENTE em uso consultando o próprio serviço.
+        CURRENT_TASK_DEF_ARN=$(echo "$API_SERVICE_JSON" | jq -r '.taskDefinition')
+        echo "Task definition atual da api: $CURRENT_TASK_DEF_ARN"
+        NETWORK_CONFIG=$(echo "$API_SERVICE_JSON" | jq -c '.networkConfiguration')
+
+        CURRENT_TASK_DEF=$(aws ecs describe-task-definition --task-definition "$CURRENT_TASK_DEF_ARN" --query 'taskDefinition')
+
+        # Preserva TODAS as propriedades atuais da task definition da api (volumes,
+        # ephemeralStorage, placementConstraints etc.) — remove só os campos imutáveis
+        # que describe-task-definition devolve mas register-task-definition rejeita
+        # como entrada — e troca a família + imagem + comando.
+        NEW_TASK_DEF=$(echo "$CURRENT_TASK_DEF" | jq \
+          --arg FAMILY "$MIGRATE_FAMILY" \
+          --arg IMAGE "$API_REPOSITORY_URI:$IMAGE_TAG" \
+          '
+            .family = $FAMILY
+            | .containerDefinitions = (.containerDefinitions | map(
+                .image = $IMAGE
+                | .command = ["node", "dist/scripts/run-migrations.js"]
+              ))
+            | del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy, .deregisteredAt)
+          ')
+        echo "$NEW_TASK_DEF" > migrate-task-def.json
+        MIGRATE_TASK_DEF_ARN=$(aws ecs register-task-definition --cli-input-json file://migrate-task-def.json \
+          --query 'taskDefinition.taskDefinitionArn' --output text)
+        echo "Task definition de migração registrada: $MIGRATE_TASK_DEF_ARN"
+
+        TASK_ARN=$(aws ecs run-task --cluster "$CLUSTER_NAME" --task-definition "$MIGRATE_TASK_DEF_ARN" \
+          --launch-type FARGATE --network-configuration "$NETWORK_CONFIG" \
+          --query 'tasks[0].taskArn' --output text)
+        [ -n "$TASK_ARN" ] && [ "$TASK_ARN" != "None" ] || { echo "Falha ao iniciar a task de migração."; exit 1; }
+        echo "Task de migração: $TASK_ARN"
+        aws ecs wait tasks-stopped --cluster "$CLUSTER_NAME" --tasks "$TASK_ARN"
+
+        EXIT_CODE=$(aws ecs describe-tasks --cluster "$CLUSTER_NAME" --tasks "$TASK_ARN" \
+          --query 'tasks[0].containers[0].exitCode' --output text)
+        STOP_REASON=$(aws ecs describe-tasks --cluster "$CLUSTER_NAME" --tasks "$TASK_ARN" \
+          --query 'tasks[0].stoppedReason' --output text)
+        if [ "$EXIT_CODE" != "0" ]; then
+          echo "Migração falhou (exitCode=$EXIT_CODE, motivo: $STOP_REASON)."
+          echo "Ver CloudWatch Logs em /selecon-portal/dev/api (a task de migração usa o mesmo log group da api)."
+          exit 1
+        fi
+        echo "Migração aplicada com sucesso (exitCode=0)."
+
+        # Confirma que não ficou nenhuma migração pendente — `prisma migrate status`
+        # sai com código != 0 se houver qualquer uma.
+        STATUS_TASK_DEF=$(echo "$NEW_TASK_DEF" | jq \
+          '.containerDefinitions = (.containerDefinitions | map(.command = ["node_modules/.bin/prisma","migrate","status","--schema","packages/db/prisma/schema.prisma"]))')
+        echo "$STATUS_TASK_DEF" > migrate-status-task-def.json
+        STATUS_TASK_DEF_ARN=$(aws ecs register-task-definition --cli-input-json file://migrate-status-task-def.json \
+          --query 'taskDefinition.taskDefinitionArn' --output text)
+
+        STATUS_TASK_ARN=$(aws ecs run-task --cluster "$CLUSTER_NAME" --task-definition "$STATUS_TASK_DEF_ARN" \
+          --launch-type FARGATE --network-configuration "$NETWORK_CONFIG" \
+          --query 'tasks[0].taskArn' --output text)
+        aws ecs wait tasks-stopped --cluster "$CLUSTER_NAME" --tasks "$STATUS_TASK_ARN"
+
+        STATUS_EXIT_CODE=$(aws ecs describe-tasks --cluster "$CLUSTER_NAME" --tasks "$STATUS_TASK_ARN" \
+          --query 'tasks[0].containers[0].exitCode' --output text)
+        if [ "$STATUS_EXIT_CODE" != "0" ]; then
+          echo "'prisma migrate status' indicou migração(ões) pendente(s) ou erro (exitCode=$STATUS_EXIT_CODE)."
+          exit 1
+        fi
+        echo "Nenhuma migração pendente (prisma migrate status: exitCode=0)."
 
 artifacts:
   files:

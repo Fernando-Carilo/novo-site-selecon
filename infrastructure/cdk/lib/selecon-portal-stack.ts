@@ -37,6 +37,13 @@ export class SeleconPortalStack extends cdk.Stack {
     super(scope, id, props);
     const { config } = props;
 
+    // Tag imutável da imagem a implantar (commit SHA curto, resolvido pela pipeline em
+    // buildspec-images.yml) — "dev" só serve de fallback para `cdk synth`/`cdk diff`
+    // manuais sem contexto (nunca usado pela pipeline real, que sempre passa
+    // -c imageTag=<commit>). As task definitions nunca apontam para uma tag mutável em
+    // implantações reais — ver docs/ASSUMPTIONS.md.
+    const imageTag = (this.node.tryGetContext("imageTag") as string | undefined) ?? "dev";
+
     cdk.Tags.of(this).add("Projeto", config.tags.Projeto);
     cdk.Tags.of(this).add("Ambiente", config.tags.Ambiente);
     cdk.Tags.of(this).add("ManagedBy", config.tags.ManagedBy);
@@ -223,7 +230,7 @@ export class SeleconPortalStack extends cdk.Stack {
       },
     });
     webTaskDefinition.addContainer("web", {
-      image: ecs.ContainerImage.fromEcrRepository(webRepo, "dev"),
+      image: ecs.ContainerImage.fromEcrRepository(webRepo, imageTag),
       portMappings: [{ containerPort: 3000 }],
       logging: ecs.LogDrivers.awsLogs({ streamPrefix: "web", logGroup: webLogGroup }),
       environment: { NODE_ENV: "production", HOSTNAME: "0.0.0.0", PORT: "3000" },
@@ -241,7 +248,7 @@ export class SeleconPortalStack extends cdk.Stack {
       },
     });
     apiTaskDefinition.addContainer("api", {
-      image: ecs.ContainerImage.fromEcrRepository(apiRepo, "dev"),
+      image: ecs.ContainerImage.fromEcrRepository(apiRepo, imageTag),
       portMappings: [{ containerPort: 3001 }],
       logging: ecs.LogDrivers.awsLogs({ streamPrefix: "api", logGroup: apiLogGroup }),
       environment: {
@@ -281,7 +288,7 @@ export class SeleconPortalStack extends cdk.Stack {
       },
     });
     workerTaskDefinition.addContainer("worker", {
-      image: ecs.ContainerImage.fromEcrRepository(workerRepo, "dev"),
+      image: ecs.ContainerImage.fromEcrRepository(workerRepo, imageTag),
       logging: ecs.LogDrivers.awsLogs({ streamPrefix: "worker", logGroup: workerLogGroup }),
       environment: {
         NODE_ENV: "production",

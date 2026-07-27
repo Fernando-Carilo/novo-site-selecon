@@ -25,11 +25,10 @@ if (codeConnectionArn) {
     env: devConfig.env,
     config: devConfig,
     codeConnectionArn,
-    // Saídas de SeleconPortalDevStack — passadas via contexto porque as duas stacks
-    // são independentes. Rode `cdk deploy SeleconPortalDevStack` primeiro e copie os
-    // valores de DatabaseSecretArn/DatabaseEndpoint/*TargetGroupArn* do seu output.
-    databaseSecretArn: app.node.tryGetContext("databaseSecretArn") as string | undefined,
-    databaseHost: app.node.tryGetContext("databaseHost") as string | undefined,
+    // Saídas de SeleconPortalDevStack — passadas via contexto porque as duas stacks são
+    // independentes (opcionais: sem elas, o estágio SmokeTest só pula a checagem de
+    // target health; o próprio pipeline cuida do resto, incluindo o primeiro
+    // `cdk deploy SeleconPortalDevStack` — ver buildspec-deploy.yml).
     webTargetGroupArn: app.node.tryGetContext("webTargetGroupArn") as string | undefined,
     apiTargetGroupArn: app.node.tryGetContext("apiTargetGroupArn") as string | undefined,
     description: "Pipeline CI/CD do Portal Selecon (DEV): CodeBuild + CodePipeline",

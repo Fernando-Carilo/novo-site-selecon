@@ -123,7 +123,59 @@ sequenceDiagram
     API->>DB: AuditEvent(action=PUBLISH_CONTEST)
 ```
 
-## 6. Estado desta versão do documento
+## 6. Implantação DEV — CI/CD
+
+```mermaid
+flowchart LR
+    Dev[git push\nfeat/fase-1-design-system] --> Source[Source\nCodeConnections]
+    Source --> Validate[Validate\nlint/typecheck/test/build]
+    Validate --> BuildImages[BuildImages\ndocker build + push ECR\ntag = commit]
+    BuildImages --> Migrations[Migrations\necs run-task\nprisma migrate deploy]
+    Migrations --> Deploy[Deploy\ncdk deploy SeleconPortalDevStack\n+ update-service web]
+    Deploy --> SmokeTest[SmokeTest\nGET / e GET /api/health/ready]
+```
+
+Cada estágio é um projeto CodeBuild dedicado (`infrastructure/cdk/lib/pipeline-stack.ts`),
+com seu próprio `buildspec-*.yml` na raiz do repositório. Uma falha em qualquer estágio
+para o pipeline antes do próximo — nada é implantado se Validate falhar, nenhuma imagem
+com problema chega ao ECS se BuildImages falhar, etc.
+
+Pontos de design relevantes:
+
+- **Tags imutáveis por commit.** Cada imagem é publicada com duas tags: a tag imutável do
+  commit (`web-dev:<sha12>`) e a tag `:dev` mutável (conveniência para inspeção manual). As
+  task definitions de produção sempre apontam para a tag do commit — nunca para `:dev` — via
+  o contexto CDK `imageTag`, resolvido em `buildspec-images.yml` a partir de
+  `CODEBUILD_RESOLVED_SOURCE_VERSION`.
+- **Migrações fora do container da API.** `prisma migrate deploy` roda como uma task Fargate
+  avulsa (`aws ecs run-task`) numa família dedicada (`selecon-portal-dev-migrate`), nunca
+  dentro do container da api em runtime e nunca reaproveitando a família `api` (que ainda
+  aponta para a imagem antiga no momento em que Migrations roda, antes de Deploy). O
+  CodeBuild não tem acesso de rede ao RDS (privado à VPC, sem `vpcConfig` no projeto) — só a
+  task Fargate, rodando dentro da VPC com a mesma rede/security groups da api, alcança o
+  banco.
+- **Duas stacks independentes.** `SeleconPortalDevStack` (RDS/Redis/S3/api/worker) e
+  `SeleconPortalPipelineStack` (CodePipeline/CodeBuild) não têm dependência de props uma na
+  outra — a pipeline pode ser criada antes da stack de dados existir. Isso resolve a
+  circularidade "Migrations precisa do RDS, que precisa de Deploy, que precisa de uma imagem
+  válida, que precisa de BuildImages, mas Migrations roda antes de Deploy": o estágio
+  Migrations detecta a ausência da stack/serviço e passa adiante (`exit 0`) apenas no
+  primeiríssimo run.
+- **Validação automática de mudanças destrutivas.** `buildspec-deploy.yml` roda `cdk diff`
+  antes de `cdk deploy` e falha o build (sem intervenção humana possível numa pipeline
+  automatizada) se o diff mencionar remoção de VPC/ALB/cluster ou qualquer sinal de
+  substituição (`Replacement`) envolvendo o serviço `web` existente.
+- **Nenhuma credencial de banco no CodeBuild.** As migrações usam os mesmos segredos do
+  Secrets Manager já injetados na task definition da api — nunca uma variável de ambiente do
+  CodeBuild.
+- **Rollback.** O `deploymentCircuitBreaker` do ECS reverte automaticamente uma implantação
+  que falhe ao estabilizar. Um rollback manual entre revisões de task definition (sem tocar
+  em migrações de banco) é feito por `scripts/rollback-ecs-dev.sh`.
+
+Ver `infrastructure/README.md` para a lista completa de comandos e `docs/ASSUMPTIONS.md`
+para o histórico de bugs encontrados e corrigidos durante a construção desta pipeline.
+
+## 7. Estado desta versão do documento
 
 Todos os módulos de domínio descritos neste documento (conteúdo/CMS, concursos, atendimento,
 denúncias, anúncios, candidato, admin/RBAC) têm implementação completa de regras de negócio,

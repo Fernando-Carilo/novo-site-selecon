@@ -73,16 +73,32 @@ pnpm test
 pnpm build
 ```
 
-## Infraestrutura e ativação na AWS
+## Infraestrutura e implantação na AWS
 
 O código de infraestrutura (`infrastructure/cdk`) está pronto e validado via `cdk synth`
 (sem credenciais reais neste sandbox — nenhum recurso AWS foi provisionado por esta sessão).
-A ativação é feita por um operador humano com credenciais reais, seguindo
-`infrastructure/README.md`:
+
+**Caminho principal (pipeline automatizada):** CodePipeline + CodeBuild fazem build,
+lint/typecheck/test, build das imagens Docker, push para o ECR, `cdk deploy`, migrações
+Prisma e smoke tests a cada push em `feat/fase-1-design-system`. Configuração única (um
+operador humano, uma vez, com credenciais reais):
 
 ```bash
-scripts/check-aws-dev.sh       # somente leitura — inventário do que já existe
-scripts/bootstrap-aws-dev.sh   # ativação guiada, com confirmação antes de cada deploy
+scripts/bootstrap-codepipeline-dev.sh   # autoriza a CodeConnection e cria a pipeline
+```
+
+A partir daí, o fluxo normal é apenas `git push origin feat/fase-1-design-system` — nada
+mais roda manualmente. Detalhes completos em `docs/OPERATIONS_RUNBOOK.md` e
+`docs/ARCHITECTURE.md`.
+
+**Ferramentas de recuperação manual** (não são mais o caminho principal; usar apenas se
+a pipeline estiver indisponível ou para diagnóstico isolado):
+
+```bash
+scripts/check-aws-dev.sh            # somente leitura — inventário do que já existe
+scripts/bootstrap-aws-dev.sh        # cdk deploy manual de SeleconPortalDevStack (sem build)
+scripts/build-push-deploy-dev.sh    # build+push+deploy manual completo, num único CloudShell
+scripts/rollback-ecs-dev.sh         # reverte um serviço ECS para a task definition anterior
 ```
 
 ## Status do projeto

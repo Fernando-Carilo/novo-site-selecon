@@ -34,6 +34,15 @@ phases:
       - docker push "$API_REPOSITORY_URI:dev"
       - docker push "$WORKER_REPOSITORY_URI:$IMAGE_TAG"
       - docker push "$WORKER_REPOSITORY_URI:dev"
+      # Confirma que as três imagens realmente existem no ECR com a tag do commit,
+      # mostrando o digest publicado — nunca assume que o push funcionou só porque o
+      # comando não retornou erro.
+      - |
+        for REPO in selecon-portal/web-dev selecon-portal/api-dev selecon-portal/worker-dev; do
+          aws ecr describe-images --repository-name "$REPO" --image-ids imageTag="$IMAGE_TAG" \
+            --query "imageDetails[0].{repo:\`$REPO\`,tag:imageTags[0],digest:imageDigest,pushedAt:imagePushedAt}" \
+            --output table
+        done
       # Artefato consumido pelos estágios seguintes (Migrations/Deploy) — evita
       # recalcular a tag e garante que todos os estágios implantam a mesma imagem.
       - printf '{"imageTag":"%s"}' "$IMAGE_TAG" > image-tag.json

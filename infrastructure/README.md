@@ -25,7 +25,59 @@ API da AWS só para sintetizar o template) e **gerencia apenas os recursos novos
   `buildspec-smoke.yml`, todos na raiz do repositório) — condicionada a uma CodeConnection
   já autorizada (ver bloqueio abaixo).
 
+As duas stacks são **independentes entre si** (nenhuma depende de outputs da outra via
+`cdk.Fn.importValue`/props obrigatórias): `SeleconPortalPipelineStack` pode ser sintetizada
+e implantada sozinha, mesmo antes de `SeleconPortalDevStack` existir. Isso resolve o
+problema de "ovo e galinha" do primeiro deploy — ver `docs/ASSUMPTIONS.md`.
+
 Nada aqui recria, substitui ou apaga o VPC, o cluster, o ALB ou o serviço `web` existentes.
+
+## Caminho principal: pipeline CodePipeline + CodeBuild
+
+Desde a introdução da pipeline, **`scripts/build-push-deploy-dev.sh` não é mais o caminho
+principal de implantação** — ele foi rebaixado a ferramenta de recuperação manual (ver
+banner no topo do próprio arquivo). O caminho principal é:
+
+1. Configuração única, por um operador com credenciais reais no AWS CloudShell:
+   ```bash
+   scripts/bootstrap-codepipeline-dev.sh
+   ```
+   Esse script cria/reaproveita a AWS CodeConnection do GitHub, imprime o ARN e as
+   instruções de autorização manual no Console (único passo humano real de todo o
+   fluxo), espera o status ficar `AVAILABLE` e então sintetiza/implanta **somente**
+   `SeleconPortalPipelineStack`. **Nunca faz `docker build`.**
+2. A partir daí, todo `git push origin feat/fase-1-design-system` dispara a pipeline
+   automaticamente (a `CodeStarConnectionsSourceAction` já registra o webhook
+   necessário — nenhum passo adicional de configuração de trigger é preciso).
+3. Os 6 estágios da pipeline (cada um com seu próprio projeto CodeBuild e buildspec):
+
+   | Estágio      | Buildspec                  | O que faz |
+   | ------------ | --------------------------- | --------- |
+   | Source       | —                            | Checkout via CodeConnection |
+   | Validate     | `buildspec-validate.yml`     | `pnpm install`, lint, typecheck, testes, build (Postgres/Redis efêmeros no próprio runner) |
+   | BuildImages  | `buildspec-images.yml`       | Docker build dos 3 Dockerfiles, push para ECR com tag imutável do commit (`web-dev:<sha>` etc.) e tag `:dev` mutável, confirma os digests publicados |
+   | Migrations   | `buildspec-migrations.yml`   | Registra uma task definition avulsa (`selecon-portal-dev-migrate`) com a imagem do commit e roda `prisma migrate deploy` via `aws ecs run-task` (o CodeBuild não tem acesso de rede ao RDS, que é privado à VPC); valida exit code e `prisma migrate status` |
+   | Deploy       | `buildspec-deploy.yml`       | `cdk synth`/`cdk diff` (com verificação automática de mudanças destrutivas) e `cdk deploy` **somente** de `SeleconPortalDevStack`, seguido da atualização manual do serviço `web` (não gerenciado pelo CDK) para a mesma tag de imagem; espera todos os 3 serviços atingirem steady state |
+   | SmokeTest    | `buildspec-smoke.yml`        | `GET /` e `GET /api/health/ready` contra o DNS do ALB — falha o build se a resposta não for HTTP 200 |
+
+Nenhuma credencial de banco passa pelo ambiente do CodeBuild: as migrações rodam como uma
+task Fargate avulsa dentro da VPC, usando os mesmos segredos do Secrets Manager já
+configurados na task definition da api.
+
+**Primeiro run da pipeline:** `SeleconPortalDevStack` ainda não existe até o estágio Deploy
+rodar `cdk deploy` pela primeira vez. O estágio Migrations, que roda antes do Deploy,
+detecta essa ausência e passa adiante sem erro (`exit 0`) nesse caso — migrações reais
+passam a rodar a partir do segundo run em diante, preservando a ordem "migrar antes de
+implantar código novo" em todos os runs subsequentes.
+
+## Ferramentas de recuperação manual (não são mais o caminho principal)
+
+| Script | Uso |
+| ------ | --- |
+| `scripts/check-aws-dev.sh` | Somente leitura — inventário do que já existe |
+| `scripts/bootstrap-aws-dev.sh` | `cdk deploy` manual e isolado de `SeleconPortalDevStack` (assume que as imagens já existem no ECR; nunca faz build) |
+| `scripts/build-push-deploy-dev.sh` | Build+push+deploy manual completo num único CloudShell (emergência, pipeline indisponível) |
+| `scripts/rollback-ecs-dev.sh` | Reverte um serviço ECS para a task definition anterior (nunca desfaz migrações de banco) |
 
 ## Estado de validação (o que é real e o que não é)
 
@@ -41,24 +93,30 @@ $ npx cdk synth SeleconPortalDevStack
  -c albListenerArn=... — os alarmes de target group ficam condicionados à mesma
  flag que cria a listener rule, para não tentar medir um target group "solto")
 
-$ npx cdk synth SeleconPortalDevStack -c albListenerArn=<arn> -c alarmEmail=<endereço>
-(exit code 0 — cria a listener rule, os 2 alarmes de target group e a assinatura SNS)
+$ npx cdk synth SeleconPortalDevStack -c albListenerArn=<arn> -c alarmEmail=<endereço> -c imageTag=<sha>
+(exit code 0 — cria a listener rule, os 2 alarmes de target group, a assinatura SNS, e
+ aponta os 3 containers para a tag de imagem informada)
 
 $ npx cdk synth SeleconPortalPipelineStack -c codeConnectionArn=<arn>
-(exit code 0, mesmo sem databaseSecretArn/databaseHost/apiTargetGroupArn — cada um
- degrada com um aviso em vez de falhar)
-
-$ npx cdk synth SeleconPortalPipelineStack -c codeConnectionArn=<arn> \
-    -c databaseSecretArn=<arn> -c databaseHost=<endpoint> -c apiTargetGroupArn=<arn>
-(exit code 0 — todos os 6 estágios com as variáveis de ambiente completas)
+(exit code 0, mesmo sem webTargetGroupArn/apiTargetGroupArn — o estágio SmokeTest apenas
+ pula a checagem de target health quando ausentes)
 ```
 
-Um bug real foi encontrado e corrigido durante essa validação: os alarmes de target
-group (`apiTargetGroup.metrics.healthyHostCount()`/`unhealthyHostCount()`) faziam o
-`cdk synth` falhar com `TargetGroupNeedsAttachedLoad` sempre que `albListenerArn` não
-era informado — porque o CDK não permite calcular métricas de um target group ainda não
-anexado a um load balancer. Corrigido movendo esses dois alarmes para dentro do mesmo
-bloco condicional que cria a listener rule.
+Bugs reais encontrados e corrigidos durante o desenvolvimento desta pipeline (documentados
+em detalhe, com a técnica de verificação usada, em `docs/ASSUMPTIONS.md`):
+
+1. Os alarmes de target group (`apiTargetGroup.metrics.healthyHostCount()`/
+   `unhealthyHostCount()`) faziam o `cdk synth` falhar com `TargetGroupNeedsAttachedLoad`
+   sempre que `albListenerArn` não era informado — corrigido movendo os dois alarmes para
+   dentro do mesmo bloco condicional que cria a listener rule.
+2. Um bug de precedência em `jq` (`.taskDefinition | .containerDefinitions =
+   (.taskDefinition.containerDefinitions | ...)`) fazia a transformação de task definition
+   falhar com `Cannot iterate over null (null)` — corrigido com o padrão
+   `.taskDefinition as $td | $td | .containerDefinitions = ($td.containerDefinitions | ...)`.
+3. Duas classes de bug de YAML nos buildspecs (colon+espaço virando mapeamento implícito;
+   folding de linha quebrando continuação de bash com `\`) — encontradas sistematicamente
+   parseando cada buildspec com `yaml.safe_load` e rodando `bash -n`/`shellcheck` no script
+   reconstruído a partir dos `commands:`.
 
 Isso comprova que o código compila e que os templates CloudFormation resultantes são
 sintaticamente válidos — nenhuma dessas etapas faz chamadas à API da AWS (por isso não
@@ -66,11 +124,11 @@ exige credenciais reais).
 
 O que **não foi executado** e continua bloqueado neste sandbox:
 
-- `cdk bootstrap` / `cdk deploy` reais — exigem credenciais AWS reais. Este ambiente só
-  possui um placeholder de proxy (`AWS_ACCESS_KEY_ID` com 14 caracteres, chaves reais
-  AKIA/ASIA têm 20+) e não tem `aws-cli` instalado.
-- Qualquer criação real de RDS, ElastiCache, S3, Secrets Manager, serviços ECS ou
-  pipeline.
+- `cdk bootstrap` / `cdk deploy` reais — exigem credenciais AWS reais (`aws sts
+  get-caller-identity` retorna `InvalidClientTokenId` neste ambiente).
+- Qualquer criação real de RDS, ElastiCache, S3, Secrets Manager, serviços ECS, pipeline,
+  CodeConnection, ou execução real de `docker build`/`docker push` (`docker pull`/`docker
+  run` retornam `403 Forbidden` do registry neste sandbox).
 
 Nunca declare este código como "implantado" ou "funcionando na AWS" sem apresentar a saída
 de um `cdk deploy` real (ARNs criados, `aws cloudformation describe-stacks`, etc.).
@@ -79,49 +137,32 @@ de um `cdk deploy` real (ARNs criados, `aws cloudformation describe-stacks`, etc
 
 A `CodeStarConnectionsSourceAction` (`lib/pipeline-stack.ts`) exige uma **AWS CodeConnection
 para o GitHub já autorizada no console** — este é o único passo que não pode ser feito por
-código (requer OAuth interativo no console da AWS). Passos:
+código (requer OAuth interativo no console da AWS). `scripts/bootstrap-codepipeline-dev.sh`
+automatiza tudo em volta desse passo (cria/reaproveita a conexão, imprime o ARN, espera o
+status ficar `AVAILABLE`) — só a autorização em si precisa ser feita manualmente:
 
-1. Console AWS → Developer Tools → Settings → Connections → Create connection → GitHub.
-2. Autorizar o app na organização `Fernando-Carilo`.
-3. Copiar o ARN gerado (`arn:aws:codeconnections:us-east-1:518825425828:connection/...`).
-4. Sintetizar/implantar com `cdk deploy SeleconPortalPipelineStack -c codeConnectionArn=<arn>`.
+1. Console AWS → Developer Tools → Settings → Connections (ou o link impresso pelo script).
+2. Encontrar a conexão `selecon-portal-github-dev` → "Update pending connection".
+3. Autorizar/instalar o GitHub App no repositório `Fernando-Carilo/novo-site-selecon`.
+4. Confirmar — o status muda para `Available` e o script retoma automaticamente.
 
-Sem esse ARN, `bin/app.ts` pula a stack da pipeline e imprime um aviso — não falha
-silenciosamente.
+Sem uma conexão `AVAILABLE`, `bin/app.ts` pula a stack da pipeline e imprime um aviso — não
+falha silenciosamente.
 
-## Antes do primeiro `cdk deploy` real
-
-`config/dev.ts` documenta cada valor informado como estado atual da conta AWS. Confirme
-com a AWS real antes de implantar (nenhum destes comandos foi executado neste sandbox):
-
-```sh
-aws cloudformation describe-stacks --stack-name selecon-portal-dev-preview
-aws ec2 describe-subnets --subnet-ids subnet-087fddfd8000fe905 subnet-0cb67ad4109c9151f
-aws elbv2 describe-load-balancers --names selecon-portal-dev-alb
-aws elbv2 describe-listeners --load-balancer-arn <arn-do-alb>   # necessário para -c albListenerArn=...
-```
-
-## Comandos
+## Comandos (referência manual — o normal é usar os scripts acima)
 
 ```sh
 cd infrastructure/cdk
 pnpm install --ignore-workspace
 npx tsc --noEmit
-npx cdk synth SeleconPortalDevStack -c albListenerArn=<arn> -c alarmEmail=<endereço>
-npx cdk synth SeleconPortalPipelineStack -c codeConnectionArn=<arn> \
-  -c databaseSecretArn=<arn> -c databaseHost=<endpoint> -c apiTargetGroupArn=<arn>
+npx cdk synth SeleconPortalDevStack -c albListenerArn=<arn> -c alarmEmail=<endereço> -c imageTag=<sha>
+npx cdk synth SeleconPortalPipelineStack -c codeConnectionArn=<arn>
 
-# Só quando houver credenciais AWS reais e a CodeConnection autorizada — nessa ordem
-# (a pipeline depende das saídas DatabaseSecretArn/DatabaseEndpoint/ApiTargetGroupArn
-# da primeira stack):
-npx cdk deploy SeleconPortalDevStack -c albListenerArn=<arn> -c alarmEmail=<endereço>
-# copie DatabaseSecretArn, DatabaseEndpoint e ApiTargetGroupArn do output acima, então:
-npx cdk deploy SeleconPortalPipelineStack -c codeConnectionArn=<arn> \
-  -c databaseSecretArn=<arn> -c databaseHost=<endpoint> -c apiTargetGroupArn=<arn>
+# Só quando houver credenciais AWS reais — as duas stacks são independentes, podem ser
+# implantadas em qualquer ordem:
+npx cdk deploy SeleconPortalPipelineStack -c codeConnectionArn=<arn>
+npx cdk deploy SeleconPortalDevStack -c albListenerArn=<arn> -c alarmEmail=<endereço> -c imageTag=<sha>
 ```
-
-Veja `scripts/bootstrap-aws-dev.sh` na raiz do repositório para a sequência completa e
-guiada (confirmação explícita antes de cada `cdk deploy`).
 
 ## Custos (DEV — seção 30 do prompt mestre)
 

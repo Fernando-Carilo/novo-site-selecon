@@ -1,9 +1,21 @@
 #!/usr/bin/env bash
-# Ativação completa do Portal Selecon DEV — build, push, cdk deploy, atualização do
-# serviço web existente, validação de ECS/ALB/logs e migração do banco. Feito para
-# rodar no AWS CloudShell (conta 518825425828, região us-east-1), NUNCA neste sandbox
-# de desenvolvimento (sem credenciais AWS reais nem acesso ao Docker Hub aqui — ver
-# docs/OPERATIONS_RUNBOOK.md e docs/ASSUMPTIONS.md).
+# FERRAMENTA DE RECUPERAÇÃO MANUAL — NÃO é mais o caminho principal de implantação.
+#
+# Este script (docker build + push + cdk deploy manual, tudo num único CloudShell) foi
+# o caminho original de implantação e foi SUBSTITUÍDO pela pipeline CodePipeline +
+# CodeBuild (Source -> Validate -> BuildImages -> Migrations -> Deploy -> SmokeTest —
+# ver infrastructure/cdk/lib/pipeline-stack.ts e buildspec-*.yml na raiz do repo).
+# O caminho normal agora é: rode scripts/bootstrap-codepipeline-dev.sh uma única vez
+# (autoriza a CodeConnection e cria a pipeline) e, a partir daí, todo
+# `git push origin feat/fase-1-design-system` implanta automaticamente — nada precisa
+# rodar manualmente no CloudShell. Ver docs/OPERATIONS_RUNBOOK.md.
+#
+# Use este script só em emergência: quando a pipeline estiver indisponível/quebrada e
+# for necessário fazer um build+deploy manual e completo a partir do zero, num único
+# CloudShell com Docker. Continua funcional e com todas as correções aplicadas
+# anteriormente, mas não recebe mais atualizações de rotina — a lógica viva é a dos
+# buildspecs. NUNCA neste sandbox de desenvolvimento (sem credenciais AWS reais nem
+# acesso ao Docker Hub aqui — ver docs/OPERATIONS_RUNBOOK.md e docs/ASSUMPTIONS.md).
 #
 # O que este script NUNCA faz:
 #   - recriar ou substituir VPC, ALB, cluster ECS ou o serviço selecon-portal-dev-web;
