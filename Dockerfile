@@ -69,6 +69,8 @@ RUN mkdir -p apps/web/public
 # node_modules de produção autocontido do apps/api (sem symlinks para fora da imagem),
 # igual à estratégia já usada em apps/api/Dockerfile.
 RUN pnpm --filter=@selecon/api deploy --prod --legacy /app/deploy-api
+# Copia o prisma CLI para um caminho fixo (pnpm store usa paths com hashes).
+RUN cp -r $(find /app/node_modules/.pnpm -path "*/prisma/build" -type d | head -1)/.. /app/prisma-cli
 
 # ---- Stage 3: imagem final — web (standalone) + api (deploy de produção) + redis ----
 FROM base AS runner
@@ -96,9 +98,9 @@ COPY --from=builder --chown=selecon:nodejs /app/deploy-api ./apps/api-deploy
 # `prisma migrate deploy` (rodado no entrypoint, antes da API subir) precisa do
 # schema.prisma + migrations/ num caminho previsível.
 COPY --from=builder --chown=selecon:nodejs /app/packages/db/prisma ./apps/api-deploy/packages/db/prisma
-# Copia o prisma CLI da fase de build (pnpm deploy --prod não o inclui).
-COPY --from=builder --chown=selecon:nodejs /app/node_modules/prisma ./apps/api-deploy/node_modules/prisma
-COPY --from=builder --chown=selecon:nodejs /app/node_modules/@prisma/engines ./apps/api-deploy/node_modules/@prisma/engines
+# Copia o prisma CLI da fase de build. No layout pnpm, o binário fica dentro do
+# store .pnpm — usamos glob find na fase builder para copiar para um path fixo.
+COPY --from=builder --chown=selecon:nodejs /app/prisma-cli ./apps/api-deploy/node_modules/prisma
 
 COPY --chown=selecon:nodejs docker/entrypoint.sh ./entrypoint.sh
 RUN chmod +x ./entrypoint.sh
