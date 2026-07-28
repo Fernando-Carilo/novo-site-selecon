@@ -18,7 +18,7 @@ const LOCK_KEY = 872364;
 const logger = createLogger("migrate");
 
 async function main() {
-  await prisma.$queryRawUnsafe(`SELECT pg_advisory_lock(${LOCK_KEY})`);
+  await prisma.$executeRawUnsafe(`SELECT pg_advisory_lock(${LOCK_KEY})`);
   try {
     logger.info("Aplicando migrações (prisma migrate deploy)...");
     execFileSync(
@@ -28,7 +28,7 @@ async function main() {
     );
     logger.info("Migrações aplicadas com sucesso.");
   } finally {
-    await prisma.$queryRawUnsafe(`SELECT pg_advisory_unlock(${LOCK_KEY})`);
+    await prisma.$executeRawUnsafe(`SELECT pg_advisory_unlock(${LOCK_KEY})`);
     await prisma.$disconnect();
   }
 }
