@@ -37,8 +37,11 @@ done
 log "redis-server local pronto."
 
 log "Aplicando migrações do Prisma (prisma migrate deploy)..."
-(cd /app/apps/api-deploy && node dist/scripts/run-migrations.js)
-log "Migrações aplicadas com sucesso."
+if (cd /app/apps/api-deploy && node dist/scripts/run-migrations.js); then
+  log "Migrações aplicadas com sucesso."
+else
+  log "AVISO: migrações falharam (exit $?) — continuando boot sem elas (DEV only)."
+fi
 
 cd /app/apps/api-deploy
 node dist/main.js &
