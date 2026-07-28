@@ -1,0 +1,15 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "TypeCheck After Task Completion",
+      "trigger": "PostTaskExec",
+      "description": "Runs TypeScript type checking after each spec task is completed",
+      "action": {
+        "type": "command",
+        "command": "cd c:/Users/lfcar/novo-site-selecon && npx tsc --noEmit --project apps/web/tsconfig.json 2>&1 | head -20",
+        "timeout": 60
+      }
+    }
+  ]
+}

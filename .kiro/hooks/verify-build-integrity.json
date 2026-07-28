@@ -1,0 +1,15 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "Verify Build Integrity",
+      "trigger": "PreToolUse",
+      "description": "Reminds the agent to verify branch and safety before shell operations",
+      "matcher": "execute_pwsh",
+      "action": {
+        "type": "agent",
+        "prompt": "Before executing shell commands that modify code or deploy, verify: 1) Are we on the correct branch (feat/fase-1-design-system)? 2) Is the command safe and relevant to the current task? 3) Will it affect production resources?"
+      }
+    }
+  ]
+}

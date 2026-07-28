@@ -1,0 +1,16 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "Lint TypeScript on Save",
+      "trigger": "PostFileSave",
+      "description": "Runs ESLint with auto-fix on saved TypeScript files",
+      "matcher": "\\\\.(ts|tsx)$",
+      "action": {
+        "type": "command",
+        "command": "npx eslint --fix --quiet --no-error-on-unmatched-pattern \"${KIRO_FILE_PATH}\" 2>/dev/null || true",
+        "timeout": 30
+      }
+    }
+  ]
+}
