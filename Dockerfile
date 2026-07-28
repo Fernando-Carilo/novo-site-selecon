@@ -96,6 +96,9 @@ COPY --from=builder --chown=selecon:nodejs /app/deploy-api ./apps/api-deploy
 # `prisma migrate deploy` (rodado no entrypoint, antes da API subir) precisa do
 # schema.prisma + migrations/ num caminho previsível.
 COPY --from=builder --chown=selecon:nodejs /app/packages/db/prisma ./apps/api-deploy/packages/db/prisma
+# Instala o prisma CLI no diretório de deploy (pnpm deploy --prod não inclui o CLI
+# porque ele está nas dependências do packages/db, não diretamente no apps/api).
+RUN cd apps/api-deploy && npm install --no-save prisma@6.2.1 && chown -R selecon:nodejs node_modules/.package-lock.json node_modules/prisma 2>/dev/null || true
 
 COPY --chown=selecon:nodejs docker/entrypoint.sh ./entrypoint.sh
 RUN chmod +x ./entrypoint.sh
