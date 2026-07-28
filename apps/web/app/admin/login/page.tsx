@@ -1,96 +1,36 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
-import { buttonClassNames } from "@selecon/ui";
-import { apiFetch, ApiError } from "@/lib/api-client";
+import { useState } from "react";
 
 export default function AdminLoginPage() {
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setError(null);
-    setSubmitting(true);
-    try {
-      const result = await apiFetch<{ mustChangePassword: boolean }>("/auth/login", {
-        method: "POST",
-        body: JSON.stringify({ email, password }),
-      });
-      router.push(result.mustChangePassword ? "/admin/trocar-senha" : "/admin");
-      router.refresh();
-    } catch (err) {
-      if (err instanceof ApiError && err.status === 429) {
-        setError("Muitas tentativas de acesso. Aguarde um minuto e tente novamente.");
-      } else {
-        setError("E-mail ou senha incorretos.");
-      }
-    } finally {
-      setSubmitting(false);
-    }
-  }
+  const inputCls = "mt-1 w-full rounded-md border border-line px-3 py-2.5 text-sm text-ink placeholder:text-muted/60 focus:border-green focus:outline-none focus:ring-1 focus:ring-green";
 
   return (
-    <section className="mx-auto flex min-h-[70vh] max-w-md flex-col justify-center px-4 py-12">
-      <h1 className="text-navy-primary text-2xl font-bold">Acesso administrativo</h1>
-      <p className="text-text-secondary mt-2 text-sm">
-        Acesso restrito à equipe do Instituto Selecon.
-      </p>
-
-      <form onSubmit={handleSubmit} className="mt-8 space-y-4" noValidate>
-        {error && (
-          <p
-            role="alert"
-            className="bg-institutional-red/10 text-institutional-red rounded-md p-3 text-sm"
-          >
-            {error}
-          </p>
-        )}
-
-        <div>
-          <label htmlFor="email" className="text-sm font-medium">
-            E-mail
-          </label>
-          <input
-            id="email"
-            name="email"
-            type="email"
-            autoComplete="username"
-            required
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            className="border-border mt-1 w-full rounded-md border px-3 py-2 text-sm"
-          />
+    <div className="flex min-h-screen items-center justify-center bg-soft p-4">
+      <div className="w-full max-w-sm rounded-lg border border-line bg-white p-8 shadow-md">
+        <div className="flex items-center justify-center gap-2">
+          <div className="flex h-10 w-10 items-center justify-center rounded-md bg-gradient-to-br from-green to-blue-700 text-sm font-black text-white">IS</div>
+          <span className="text-lg font-bold text-ink">Selecon Admin</span>
         </div>
+        <p className="mt-4 text-center text-xs text-muted">Acesse a área administrativa do Instituto Selecon</p>
 
-        <div>
-          <label htmlFor="password" className="text-sm font-medium">
-            Senha
-          </label>
-          <input
-            id="password"
-            name="password"
-            type="password"
-            autoComplete="current-password"
-            required
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            className="border-border mt-1 w-full rounded-md border px-3 py-2 text-sm"
-          />
-        </div>
-
-        <button
-          type="submit"
-          disabled={submitting}
-          className={buttonClassNames("primary", "w-full")}
-        >
-          {submitting ? "Entrando…" : "Entrar"}
-        </button>
-      </form>
-    </section>
+        <form className="mt-8 space-y-4" onSubmit={(e) => { e.preventDefault(); window.location.href = "/admin"; }}>
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wide text-muted">E-mail</label>
+            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className={inputCls} placeholder="admin@selecon.org.br" required />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wide text-muted">Senha</label>
+            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className={inputCls} placeholder="••••••••" required />
+          </div>
+          <button type="submit" className="w-full min-h-[44px] rounded-md font-extrabold text-sm inline-flex items-center justify-center bg-green text-white shadow-green hover:bg-green-700 transition-all duration-base">
+            Entrar
+          </button>
+        </form>
+      </div>
+    </div>
   );
 }

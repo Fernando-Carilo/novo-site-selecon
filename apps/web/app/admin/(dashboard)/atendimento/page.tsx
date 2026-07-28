@@ -1,174 +1,139 @@
-"use client";
+import Link from "next/link";
 
-import { useCallback, useEffect, useState, type FormEvent } from "react";
-import type { TicketDetail, TicketSummary } from "@selecon/contracts";
-import { buttonClassNames } from "@selecon/ui";
-import { apiFetch, ApiError } from "@/lib/api-client";
+const SUMMARY_CARDS = [
+  { label: "Total Hoje", value: "34" },
+  { label: "Resolvidos", value: "28" },
+  { label: "Pendentes", value: "6" },
+  { label: "Tempo Médio", value: "2h 15min" },
+];
 
-const STATUS_LABEL: Record<TicketSummary["status"], string> = {
-  NEW: "Novo",
-  IN_PROGRESS: "Em atendimento",
-  ANSWERED: "Respondido",
-  CLOSED: "Encerrado",
-  REOPENED: "Reaberto",
-};
+const MOCK_ATTENDANCES = [
+  {
+    id: "1",
+    date: "15/01/2025",
+    attendant: "Maria Silva",
+    contest: "Pref. Volta Redonda",
+    channel: "Telefone",
+    status: "resolvido",
+  },
+  {
+    id: "2",
+    date: "15/01/2025",
+    attendant: "João Santos",
+    contest: "SAAE Barra Mansa",
+    channel: "WhatsApp",
+    status: "pendente",
+  },
+  {
+    id: "3",
+    date: "15/01/2025",
+    attendant: "Ana Costa",
+    contest: "Câmara Resende",
+    channel: "E-mail",
+    status: "resolvido",
+  },
+  {
+    id: "4",
+    date: "15/01/2025",
+    attendant: "Maria Silva",
+    contest: "Pref. Angra dos Reis",
+    channel: "Chat",
+    status: "em andamento",
+  },
+  {
+    id: "5",
+    date: "14/01/2025",
+    attendant: "João Santos",
+    contest: "Pref. Volta Redonda",
+    channel: "Telefone",
+    status: "resolvido",
+  },
+];
 
-export default function AdminTicketsPage() {
-  const [tickets, setTickets] = useState<TicketSummary[]>([]);
-  const [selected, setSelected] = useState<TicketDetail | null>(null);
-  const [error, setError] = useState<string | null>(null);
+function StatusBadge({ status }: { status: string }) {
+  const styles: Record<string, string> = {
+    resolvido: "bg-green-soft text-green-700",
+    "em andamento": "bg-soft-blue text-blue-700",
+    pendente: "bg-yellow/10 text-yellow",
+  };
+  return (
+    <span
+      className={`rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase ${styles[status] ?? "bg-soft text-muted"}`}
+    >
+      {status}
+    </span>
+  );
+}
 
-  const loadList = useCallback(async () => {
-    try {
-      setTickets(await apiFetch<TicketSummary[]>("/admin/tickets"));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Falha ao carregar atendimentos");
-    }
-  }, []);
-
-  useEffect(() => {
-    loadList();
-  }, [loadList]);
-
-  async function openTicket(id: string) {
-    setError(null);
-    try {
-      setSelected(await apiFetch<TicketDetail>(`/admin/tickets/${id}`));
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Falha ao abrir atendimento");
-    }
-  }
-
-  async function handleReply(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!selected) return;
-    const formElement = event.currentTarget;
-    const body = new FormData(formElement).get("body") as string;
-    try {
-      const updated = await apiFetch<TicketDetail>(`/admin/tickets/${selected.id}/messages`, {
-        method: "POST",
-        body: JSON.stringify({ body }),
-      });
-      setSelected(updated);
-      // `event.currentTarget` é anulado pelo React assim que o handler assíncrono
-      // sofre um `await` — captura-se o elemento antes para poder resetar o form.
-      formElement.reset();
-      await loadList();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Falha ao responder");
-    }
-  }
-
-  async function handleClose() {
-    if (!selected) return;
-    try {
-      const updated = await apiFetch<TicketDetail>(`/admin/tickets/${selected.id}/close`, {
-        method: "POST",
-        body: "{}",
-      });
-      setSelected(updated);
-      await loadList();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Falha ao encerrar");
-    }
-  }
-
+export default function AtendimentoPage() {
   return (
     <section>
-      <h1 className="text-navy-primary text-2xl font-bold">Atendimento</h1>
-      {error && (
-        <p
-          role="alert"
-          className="bg-institutional-red/10 text-institutional-red mt-4 rounded-md p-3 text-sm"
-        >
-          {error}
-        </p>
-      )}
-
-      <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_1.2fr]">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[420px] border-collapse text-left text-sm">
-            <caption className="sr-only">Fila de atendimento</caption>
-            <thead>
-              <tr className="border-border border-b">
-                <th scope="col" className="py-2 pr-4 font-semibold">
-                  Protocolo
-                </th>
-                <th scope="col" className="py-2 pr-4 font-semibold">
-                  Status
-                </th>
-                <th scope="col" className="py-2 font-semibold">
-                  Contato
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {tickets.map((ticket) => (
-                <tr
-                  key={ticket.id}
-                  className={`border-border hover:bg-background-light cursor-pointer border-b ${selected?.id === ticket.id ? "bg-background-light" : ""}`}
-                  onClick={() => openTicket(ticket.id)}
-                >
-                  <td className="py-2 pr-4 font-mono text-xs">{ticket.protocol}</td>
-                  <td className="py-2 pr-4">{STATUS_LABEL[ticket.status]}</td>
-                  <td className="py-2">{ticket.contactName}</td>
-                </tr>
-              ))}
-              {tickets.length === 0 && (
-                <tr>
-                  <td colSpan={3} className="text-text-secondary py-6 text-center">
-                    Nenhum atendimento na fila.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+      {/* Header */}
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-extrabold text-ink">Atendimento</h1>
+          <p className="mt-1 text-sm text-muted">Gerenciamento de atendimentos ao público.</p>
         </div>
+        <Link
+          href="/admin/atendimento/novo"
+          className="min-h-[44px] px-[18px] rounded-md font-extrabold text-sm inline-flex items-center bg-green text-white shadow-green hover:bg-green-700 transition-all duration-base"
+        >
+          Novo Atendimento
+        </Link>
+      </div>
 
-        {selected && (
-          <div className="border-border bg-surface rounded-lg border p-5">
-            <p className="text-text-secondary text-xs">Protocolo {selected.protocol}</p>
-            <h2 className="text-navy-primary mt-1 text-lg font-semibold">{selected.subject}</h2>
-
-            <ol className="mt-4 max-h-64 space-y-3 overflow-y-auto">
-              {selected.messages.map((message) => (
-                <li key={message.id} className="border-border border-l-2 pl-3 text-sm">
-                  <p className="text-text-secondary text-xs">
-                    {message.direction === "INBOUND" ? "Cidadão" : "Atendimento"}
-                  </p>
-                  {message.body}
-                </li>
-              ))}
-            </ol>
-
-            {selected.status !== "CLOSED" && (
-              <>
-                <form onSubmit={handleReply} className="mt-4 space-y-2">
-                  <label htmlFor="body" className="text-sm font-medium">
-                    Responder
-                  </label>
-                  <textarea
-                    id="body"
-                    name="body"
-                    required
-                    rows={3}
-                    className="border-border w-full rounded-md border px-3 py-2 text-sm"
-                  />
-                  <button type="submit" className={buttonClassNames("primary")}>
-                    Enviar resposta
-                  </button>
-                </form>
-                <button
-                  type="button"
-                  onClick={handleClose}
-                  className="text-institutional-red mt-3 text-sm hover:underline"
-                >
-                  Encerrar atendimento
-                </button>
-              </>
-            )}
+      {/* Summary cards */}
+      <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {SUMMARY_CARDS.map((card) => (
+          <div
+            key={card.label}
+            className="rounded-lg border border-line bg-white p-5 shadow-sm"
+          >
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted">
+              {card.label}
+            </p>
+            <p className="mt-2 text-2xl font-bold text-ink">{card.value}</p>
           </div>
-        )}
+        ))}
+      </div>
+
+      {/* Table */}
+      <div className="mt-8 overflow-x-auto rounded-lg border border-line bg-white shadow-sm">
+        <table className="w-full min-w-[600px] text-sm">
+          <caption className="sr-only">Atendimentos recentes</caption>
+          <thead>
+            <tr className="border-b border-line bg-soft">
+              <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted">
+                Data
+              </th>
+              <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted">
+                Atendente
+              </th>
+              <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted">
+                Certame
+              </th>
+              <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted">
+                Canal
+              </th>
+              <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted">
+                Status
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {MOCK_ATTENDANCES.map((item) => (
+              <tr key={item.id} className="border-b border-line last:border-0 hover:bg-soft/50">
+                <td className="px-4 py-3 text-ink">{item.date}</td>
+                <td className="px-4 py-3 text-ink">{item.attendant}</td>
+                <td className="px-4 py-3 text-ink">{item.contest}</td>
+                <td className="px-4 py-3 text-ink">{item.channel}</td>
+                <td className="px-4 py-3">
+                  <StatusBadge status={item.status} />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </section>
   );

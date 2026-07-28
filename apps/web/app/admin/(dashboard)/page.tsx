@@ -1,192 +1,108 @@
 import Link from "next/link";
-import { cookies } from "next/headers";
-import type { AdminDashboardStats } from "@selecon/contracts";
 
-const API_INTERNAL_URL = process.env.API_INTERNAL_URL ?? "http://localhost:3001";
+const KPI_CARDS = [
+  { label: "Concursos Ativos", value: "12", href: "/admin/concursos" },
+  { label: "Atendimentos Hoje", value: "34", href: "/admin/atendimento" },
+  { label: "Denúncias Pendentes", value: "7", href: "/admin/denuncias" },
+  { label: "Receita do Mês", value: "R$ 2,4M", href: "/admin/financeiro" },
+];
 
-async function getStats(): Promise<AdminDashboardStats | null> {
-  const cookieStore = await cookies();
-  const response = await fetch(`${API_INTERNAL_URL}/admin/dashboard/stats`, {
-    headers: { cookie: cookieStore.toString() },
-    cache: "no-store",
-  });
-  if (!response.ok) return null;
-  return response.json();
-}
+const QUICK_ACTIONS = [
+  { label: "Novo Concurso", href: "/admin/concursos" },
+  { label: "Novo Atendimento", href: "/admin/atendimento/novo" },
+  { label: "Ver Denúncias", href: "/admin/denuncias" },
+  { label: "Relatório Financeiro", href: "/admin/financeiro" },
+];
 
-function StatCard({ href, label, value }: { href: string; label: string; value: number | string }) {
-  return (
-    <Link
-      href={href}
-      className="border-border bg-surface hover:border-action-blue block rounded-lg border p-5"
-    >
-      <p className="text-text-secondary text-sm">{label}</p>
-      <p className="text-navy-primary mt-1 text-3xl font-bold">{value}</p>
-    </Link>
-  );
-}
+const RECENT_ACTIVITY = [
+  {
+    id: "1",
+    action: "Concurso publicado",
+    detail: "Prefeitura de Volta Redonda - Edital 001/2025",
+    time: "Há 2 horas",
+  },
+  {
+    id: "2",
+    action: "Atendimento encerrado",
+    detail: "Protocolo ATD-20250115-001",
+    time: "Há 3 horas",
+  },
+  {
+    id: "3",
+    action: "Nova denúncia recebida",
+    detail: "Protocolo DEN-20250115-A3B",
+    time: "Há 5 horas",
+  },
+  {
+    id: "4",
+    action: "Pagamento confirmado",
+    detail: "Nota fiscal #1234 - Gráfica Express",
+    time: "Há 6 horas",
+  },
+];
 
-export default async function AdminHomePage() {
-  const stats = await getStats();
-
-  if (!stats) {
-    return (
-      <section>
-        <h1 className="text-navy-primary text-2xl font-bold">Command Center</h1>
-        <p className="text-institutional-red mt-4 text-sm">
-          Não foi possível carregar as métricas do dashboard agora.
-        </p>
-      </section>
-    );
-  }
-
+export default function AdminDashboardPage() {
   return (
     <section>
-      <h1 className="text-navy-primary text-2xl font-bold">Command Center</h1>
-      <p className="text-text-secondary mt-1 text-sm">
-        Visão geral do portal, calculada em tempo real a partir do banco. Cada card abre a fila
-        filtrada correspondente.
-      </p>
+      <h1 className="text-2xl font-extrabold text-ink">Dashboard</h1>
+      <p className="mt-1 text-sm text-muted">Bem-vindo ao painel administrativo.</p>
 
-      <h2 className="text-navy-primary mt-6 text-sm font-semibold uppercase tracking-wide">
-        Concursos
-      </h2>
-      <div className="mt-2 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <StatCard href="/admin/concursos" label="Publicados" value={stats.contests.active} />
-        <StatCard
-          href="/admin/concursos?status=DRAFT"
-          label="Em rascunho"
-          value={stats.contests.draft}
-        />
-        <StatCard
-          href="/admin/concursos?status=CLOSED"
-          label="Encerrados"
-          value={stats.contests.closed}
-        />
+      {/* KPI Cards */}
+      <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {KPI_CARDS.map((kpi) => (
+          <Link
+            key={kpi.label}
+            href={kpi.href}
+            className="rounded-lg border border-line bg-white p-5 shadow-sm hover:shadow-md transition-shadow"
+          >
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted">
+              {kpi.label}
+            </p>
+            <p className="mt-2 text-2xl font-bold text-ink">{kpi.value}</p>
+          </Link>
+        ))}
       </div>
 
-      <h2 className="text-navy-primary mt-6 text-sm font-semibold uppercase tracking-wide">
-        Atendimento
-      </h2>
-      <div className="mt-2 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <StatCard href="/admin/atendimento" label="Abertos" value={stats.tickets.open} />
-        <StatCard
-          href="/admin/atendimento"
-          label={`Atrasados (> 48h)`}
-          value={stats.tickets.overdueOpen}
-        />
-        <StatCard
-          href="/admin/atendimento"
-          label="Tempo médio de resolução (30d)"
-          value={
-            stats.tickets.averageResolutionHours !== null
-              ? `${stats.tickets.averageResolutionHours.toFixed(1)}h`
-              : "—"
-          }
-        />
-      </div>
-
-      <h2 className="text-navy-primary mt-6 text-sm font-semibold uppercase tracking-wide">
-        Denúncias e anúncios
-      </h2>
-      <div className="mt-2 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-          href="/admin/denuncias"
-          label="Denúncias recebidas"
-          value={stats.whistleblowing.received}
-        />
-        <StatCard
-          href="/admin/denuncias"
-          label="Em análise"
-          value={stats.whistleblowing.underAnalysis}
-        />
-        <StatCard
-          href="/admin/anuncios"
-          label="Campanhas ativas"
-          value={stats.advertising.activeCampaigns}
-        />
-        <StatCard
-          href="/admin/anuncios"
-          label="Em revisão"
-          value={stats.advertising.pendingReview}
-        />
-      </div>
-
-      <h2 className="text-navy-primary mt-6 text-sm font-semibold uppercase tracking-wide">
-        Conteúdo pendente
-      </h2>
-      <div className="mt-2 grid gap-4 sm:grid-cols-2">
-        <StatCard
-          href="/admin/conteudo"
-          label="Páginas pendentes"
-          value={stats.content.pendingPages}
-        />
-        <StatCard
-          href="/admin/conteudo"
-          label="Notícias pendentes"
-          value={stats.content.pendingNews}
-        />
-      </div>
-
-      <h2 className="text-navy-primary mt-6 text-sm font-semibold uppercase tracking-wide">
-        Status das integrações
-      </h2>
-      <div className="border-border bg-surface mt-2 rounded-lg border p-4">
-        <ul className="flex flex-wrap gap-3 text-sm">
-          {stats.integrations.map((integration) => (
-            <li key={integration.name} className="flex items-center gap-2">
-              <span
-                className={`inline-block h-2 w-2 rounded-full ${integration.mode === "real" ? "bg-success-green" : "bg-amber-500"}`}
-              />
-              {integration.name} — {integration.mode === "real" ? "real" : "simulado (mock)"}
-            </li>
+      {/* Quick Actions */}
+      <div className="mt-8">
+        <h2 className="text-sm font-extrabold uppercase tracking-wide text-muted">
+          Ações rápidas
+        </h2>
+        <div className="mt-3 flex flex-wrap gap-2">
+          {QUICK_ACTIONS.map((action) => (
+            <Link
+              key={action.label}
+              href={action.href}
+              className="rounded-md border border-line px-3 py-2 text-sm font-semibold text-ink hover:bg-soft transition-colors"
+            >
+              {action.label}
+            </Link>
           ))}
-        </ul>
+        </div>
       </div>
 
-      <h2 className="text-navy-primary mt-6 text-sm font-semibold uppercase tracking-wide">
-        Últimas ações de auditoria
-      </h2>
-      <div className="border-border bg-surface mt-2 overflow-x-auto rounded-lg border">
-        <table className="w-full min-w-[420px] border-collapse text-left text-sm">
-          <caption className="sr-only">Últimas ações de auditoria</caption>
-          <thead>
-            <tr className="border-border border-b">
-              <th scope="col" className="p-3 font-semibold">
-                Ação
-              </th>
-              <th scope="col" className="p-3 font-semibold">
-                Recurso
-              </th>
-              <th scope="col" className="p-3 font-semibold">
-                Quando
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {stats.recentAuditEvents.map((event) => (
-              <tr key={event.id} className="border-border border-b last:border-0">
-                <td className="p-3">{event.action}</td>
-                <td className="p-3">{event.resourceType}</td>
-                <td className="p-3">{new Date(event.occurredAt).toLocaleString("pt-BR")}</td>
-              </tr>
-            ))}
-            {stats.recentAuditEvents.length === 0 && (
-              <tr>
-                <td colSpan={3} className="text-text-secondary p-4 text-center">
-                  Nenhuma ação registrada ainda.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+      {/* Recent Activity */}
+      <div className="mt-8">
+        <h2 className="text-sm font-extrabold uppercase tracking-wide text-muted">
+          Atividade recente
+        </h2>
+        <div className="mt-3 rounded-lg border border-line bg-white shadow-sm">
+          {RECENT_ACTIVITY.map((item, i) => (
+            <div
+              key={item.id}
+              className={`flex items-center justify-between px-5 py-3 ${
+                i < RECENT_ACTIVITY.length - 1 ? "border-b border-line" : ""
+              }`}
+            >
+              <div>
+                <p className="text-sm font-semibold text-ink">{item.action}</p>
+                <p className="text-xs text-muted">{item.detail}</p>
+              </div>
+              <p className="text-xs text-muted whitespace-nowrap">{item.time}</p>
+            </div>
+          ))}
+        </div>
       </div>
-      <Link
-        href="/admin/auditoria"
-        className="text-action-blue mt-2 inline-block text-sm hover:underline"
-      >
-        Ver trilha de auditoria completa →
-      </Link>
     </section>
   );
 }

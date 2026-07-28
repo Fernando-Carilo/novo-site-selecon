@@ -1,41 +1,65 @@
+"use client";
+
 import Link from "next/link";
-import { redirect } from "next/navigation";
-import type { ReactNode } from "react";
-import { getCurrentUser } from "@/lib/session";
-import { AdminMobileNav } from "./admin-mobile-nav";
-import { LogoutButton } from "./logout-button";
+import { usePathname } from "next/navigation";
+import { useState, type ReactNode } from "react";
 
 const NAV_ITEMS = [
-  { href: "/admin", label: "Command Center" },
-  { href: "/admin/conteudo", label: "Conteúdo" },
-  { href: "/admin/noticias", label: "Notícias" },
-  { href: "/admin/concursos", label: "Concursos" },
-  { href: "/admin/atendimento", label: "Atendimento" },
-  { href: "/admin/denuncias", label: "Canal de denúncias" },
-  { href: "/admin/anuncios", label: "Anúncios" },
-  { href: "/admin/usuarios", label: "Usuários" },
-  { href: "/admin/perfis", label: "Perfis e permissões" },
-  { href: "/admin/auditoria", label: "Auditoria" },
-  { href: "/admin/configuracoes", label: "Configurações" },
+  { href: "/admin", label: "Dashboard", icon: "📊" },
+  { href: "/admin/concursos", label: "Concursos", icon: "📝" },
+  { href: "/admin/atendimento", label: "Atendimento", icon: "🎧" },
+  { href: "/admin/denuncias", label: "Denúncias", icon: "🔔" },
+  { href: "/admin/financeiro", label: "Financeiro", icon: "💰" },
+  { href: "/admin/logistica", label: "Logística", icon: "📦" },
+  { href: "/admin/conteudo", label: "CMS", icon: "📄" },
+  { href: "/admin/configuracoes", label: "Configurações", icon: "⚙️" },
 ];
 
-export default async function AdminDashboardLayout({ children }: { children: ReactNode }) {
-  const user = await getCurrentUser();
-  if (!user) redirect("/admin/login");
-  if (user.mustChangePassword) redirect("/admin/trocar-senha");
+export default function AdminDashboardLayout({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  function isActive(href: string) {
+    if (href === "/admin") return pathname === "/admin";
+    return pathname.startsWith(href);
+  }
 
   return (
     <div className="flex min-h-screen">
-      <aside className="bg-navy-primary hidden w-64 flex-col p-6 text-white md:flex">
-        <p className="text-lg font-bold">Selecon Admin</p>
+      {/* Sidebar */}
+      <aside
+        className={`fixed inset-y-0 left-0 z-40 w-64 bg-blue-950 p-6 text-white transition-transform md:relative md:translate-x-0 ${
+          sidebarOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        <div className="flex items-center justify-between">
+          <Link href="/admin" className="text-lg font-extrabold text-white">
+            Selecon Admin
+          </Link>
+          <button
+            onClick={() => setSidebarOpen(false)}
+            className="text-white/70 hover:text-white md:hidden"
+            aria-label="Fechar menu"
+          >
+            ✕
+          </button>
+        </div>
+
         <nav className="mt-8" aria-label="Navegação administrativa">
           <ul className="space-y-1">
             {NAV_ITEMS.map((item) => (
               <li key={item.href}>
                 <Link
                   href={item.href}
-                  className="focus-visible:ring-support-cyan block rounded-md px-3 py-2 text-sm hover:bg-white/10 focus-visible:outline-none focus-visible:ring-[3px]"
+                  className={`flex items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-colors ${
+                    isActive(item.href)
+                      ? "bg-white/10 font-semibold text-white"
+                      : "text-white/70 hover:bg-white/5 hover:text-white"
+                  }`}
                 >
+                  <span role="img" aria-hidden="true">
+                    {item.icon}
+                  </span>
                   {item.label}
                 </Link>
               </li>
@@ -43,25 +67,50 @@ export default async function AdminDashboardLayout({ children }: { children: Rea
           </ul>
         </nav>
       </aside>
-      {/* min-w-0: sem isso, um item flex recusa encolher abaixo da largura
-          intrínseca do seu conteúdo — a tabela com overflow-x-auto interna
-          (min-w-[820px]) forçava a PÁGINA INTEIRA a ficar larga no mobile em
-          vez de rolar só internamente, empurrando o cabeçalho da página para
-          fora da viewport (bug real encontrado pela suíte E2E em
-          mobile-chromium). */}
+
+      {/* Overlay */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-black/50 md:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      {/* Main */}
       <div className="min-w-0 flex-1">
-        <header className="border-border bg-navy-primary md:bg-surface relative flex items-center justify-between border-b px-4 py-3 md:px-6 md:py-4">
+        {/* Top bar */}
+        <header className="flex items-center justify-between border-b border-line bg-white px-4 py-3 md:px-6 md:py-4">
           <div className="flex items-center gap-3">
-            <AdminMobileNav items={NAV_ITEMS} />
-            <p className="md:text-text-primary text-sm text-white">
-              <span className="font-semibold">{user.displayName}</span>{" "}
-              <span className="md:text-text-secondary text-white/70">
-                ({user.roles.join(", ")})
-              </span>
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="text-ink md:hidden"
+              aria-label="Abrir menu"
+            >
+              <svg
+                className="h-5 w-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 6h16M4 12h16M4 18h16"
+                />
+              </svg>
+            </button>
+            <p className="text-sm text-ink">
+              <span className="font-semibold">Admin</span>{" "}
+              <span className="text-muted">• Instituto Selecon</span>
             </p>
           </div>
-          <LogoutButton />
+          <button className="text-sm text-muted hover:text-ink transition-colors">
+            Sair
+          </button>
         </header>
+
+        {/* Content */}
         <main id="main-content" className="p-6">
           {children}
         </main>

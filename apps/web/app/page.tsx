@@ -1,9 +1,8 @@
 import { HeroSection } from "@/components/home/HeroSection";
 import { SearchPanel } from "@/components/home/SearchPanel";
-import { ProfilesSection } from "@/components/home/ProfilesSection";
+import { ServicesSection } from "@/components/home/ServicesSection";
 import { ContestsSection } from "@/components/home/ContestsSection";
-import { SystemSection } from "@/components/home/SystemSection";
-import { ArchitectureSection } from "@/components/home/ArchitectureSection";
+import { ClientsSection } from "@/components/home/ClientsSection";
 import { ProofSection } from "@/components/home/ProofSection";
 import { NewsSection } from "@/components/home/NewsSection";
 import { ContactBand } from "@/components/home/ContactBand";
@@ -13,10 +12,9 @@ export default function HomePage() {
     <>
       <HeroSection />
       <SearchPanel />
-      <ProfilesSection />
+      <ServicesSection />
       <ContestsSection />
-      <SystemSection />
-      <ArchitectureSection />
+      <ClientsSection />
       <ProofSection />
       <NewsSection />
       <ContactBand />

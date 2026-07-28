@@ -1,140 +1,64 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
-import type { WhistleblowingCasePublicView } from "@selecon/contracts";
-import { buttonClassNames } from "@selecon/ui";
-import { apiFetch } from "@/lib/api-client";
+import { useState } from "react";
 
-const STATUS_LABEL: Record<WhistleblowingCasePublicView["status"], string> = {
-  RECEIVED: "Recebida",
-  TRIAGE: "Em triagem",
-  UNDER_ANALYSIS: "Em análise",
-  AWAITING_INFO: "Aguardando informações",
-  DECIDED: "Decidida",
-  CLOSED: "Encerrada",
-};
+export default function ConsultarDenunciaPage() {
+  const [protocol, setProtocol] = useState("");
+  const [accessCode, setAccessCode] = useState("");
+  const [result, setResult] = useState<null | { status: string; messages: { author: string; body: string; date: string }[] }>(null);
+  const [error, setError] = useState("");
 
-export default function WhistleblowingLookupPage() {
-  const [credentials, setCredentials] = useState<{ protocol: string; accessCode: string } | null>(
-    null,
-  );
-  const [caseView, setCaseView] = useState<WhistleblowingCasePublicView | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [messageBody, setMessageBody] = useState("");
-
-  async function handleLookup(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setError(null);
-    setLoading(true);
-    const form = new FormData(event.currentTarget);
-    const protocol = (form.get("protocol") as string).trim();
-    const accessCode = (form.get("accessCode") as string).trim();
-    try {
-      const result = await apiFetch<WhistleblowingCasePublicView>(
-        "/public/whistleblowing/cases/lookup",
-        { method: "POST", body: JSON.stringify({ protocol, accessCode }) },
-      );
-      setCaseView(result);
-      setCredentials({ protocol, accessCode });
-    } catch {
-      setError("Protocolo ou código de acesso inválidos.");
-    } finally {
-      setLoading(false);
-    }
+  function handleLookup(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+    if (!protocol || !accessCode) { setError("Preencha protocolo e código de acesso."); return; }
+    // Mock lookup
+    setResult({
+      status: "EM INVESTIGAÇÃO",
+      messages: [
+        { author: "EQUIPE", body: "Sua denúncia foi recebida e está sendo analisada pela ouvidoria.", date: "28/07/2026 10:30" },
+        { author: "DENUNCIANTE", body: "Gostaria de adicionar que a situação continua ocorrendo.", date: "28/07/2026 14:15" },
+      ]
+    });
   }
 
-  async function handleAddMessage(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!credentials) return;
-    setError(null);
-    try {
-      const result = await apiFetch<WhistleblowingCasePublicView>(
-        "/public/whistleblowing/cases/messages",
-        {
-          method: "POST",
-          body: JSON.stringify({ ...credentials, body: messageBody }),
-        },
-      );
-      setCaseView(result);
-      setMessageBody("");
-    } catch {
-      setError("Não foi possível enviar a mensagem agora.");
-    }
-  }
+  const inputCls = "mt-1 w-full rounded-md border border-line px-3 py-2.5 text-sm text-ink placeholder:text-muted/60 focus:border-green focus:outline-none focus:ring-1 focus:ring-green";
+  const labelCls = "block text-xs font-semibold uppercase tracking-wide text-muted";
 
   return (
-    <section className="mx-auto max-w-2xl px-4 py-16">
-      <h1 className="text-navy-primary text-2xl font-bold">Consultar denúncia</h1>
-      <form onSubmit={handleLookup} className="mt-8 space-y-4" noValidate>
-        <div>
-          <label htmlFor="protocol" className="text-sm font-medium">
-            Protocolo
-          </label>
-          <input
-            id="protocol"
-            name="protocol"
-            required
-            placeholder="DEN-20260101-123456"
-            className="border-border mt-1 w-full rounded-md border px-3 py-2 text-sm"
-          />
-        </div>
-        <div>
-          <label htmlFor="accessCode" className="text-sm font-medium">
-            Código de acesso
-          </label>
-          <input
-            id="accessCode"
-            name="accessCode"
-            required
-            className="border-border mt-1 w-full rounded-md border px-3 py-2 text-sm"
-          />
-        </div>
-        <button type="submit" disabled={loading} className={buttonClassNames("primary")}>
-          {loading ? "Consultando…" : "Consultar"}
-        </button>
-      </form>
+    <section className="bg-white py-16 sm:py-[92px]">
+      <div className="w-[min(700px,calc(100%-40px))] mx-auto">
+        <h1 className="text-2xl font-extrabold text-ink">Consultar Denúncia</h1>
+        <p className="mt-2 text-sm text-muted">Informe o protocolo e código de acesso recebidos no momento do registro.</p>
 
-      {error && <p className="text-institutional-red mt-6">{error}</p>}
+        <form onSubmit={handleLookup} className="mt-8 rounded-lg border border-line p-6 space-y-4">
+          <div><label className={labelCls}>Protocolo *</label><input value={protocol} onChange={(e) => setProtocol(e.target.value)} className={inputCls} placeholder="SC-2026-123456" /></div>
+          <div><label className={labelCls}>Código de acesso *</label><input value={accessCode} onChange={(e) => setAccessCode(e.target.value)} className={inputCls} placeholder="ABCDEFG-HJKMNPQ-RSTUVWX-YZ23456" /></div>
+          {error && <p className="text-xs text-red font-semibold">{error}</p>}
+          <button type="submit" className="min-h-[44px] px-[18px] rounded-md font-extrabold text-sm inline-flex items-center bg-green text-white shadow-green hover:bg-green-700 transition-all duration-base">Consultar</button>
+        </form>
 
-      {caseView && (
-        <div className="border-border bg-surface mt-8 rounded-lg border p-6">
-          <p className="text-text-secondary text-sm">Protocolo {caseView.protocol}</p>
-          <p className="bg-background-light mt-2 inline-flex rounded-full px-3 py-1 text-sm font-medium">
-            {STATUS_LABEL[caseView.status]}
-          </p>
-
-          <ol className="mt-6 space-y-4">
-            {caseView.messages.map((message) => (
-              <li key={message.id} className="border-border border-l-2 pl-4">
-                <p className="text-text-secondary text-xs">
-                  {message.direction === "FROM_REPORTER" ? "Você" : "Instituto Selecon"} —{" "}
-                  {new Date(message.createdAt).toLocaleString("pt-BR")}
-                </p>
-                <p className="mt-1 text-sm">{message.body}</p>
-              </li>
-            ))}
-          </ol>
-
-          <form onSubmit={handleAddMessage} className="mt-6 space-y-2">
-            <label htmlFor="messageBody" className="text-sm font-medium">
-              Enviar informação adicional
-            </label>
-            <textarea
-              id="messageBody"
-              name="messageBody"
-              required
-              rows={3}
-              value={messageBody}
-              onChange={(event) => setMessageBody(event.target.value)}
-              className="border-border w-full rounded-md border px-3 py-2 text-sm"
-            />
-            <button type="submit" className={buttonClassNames("secondary")}>
-              Enviar
-            </button>
-          </form>
-        </div>
-      )}
+        {result && (
+          <div className="mt-8 rounded-lg border border-line p-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-bold text-ink">Protocolo: {protocol}</h2>
+              <span className="rounded-full bg-soft-blue px-2.5 py-1 text-[11px] font-black uppercase text-blue-700">{result.status}</span>
+            </div>
+            <div className="mt-6 space-y-4">
+              <h3 className="text-sm font-bold text-ink">Mensagens</h3>
+              {result.messages.map((msg, i) => (
+                <div key={i} className={`rounded-lg p-4 text-sm ${msg.author === "EQUIPE" ? "bg-soft border border-line" : "bg-green-soft border border-green/20"}`}>
+                  <div className="flex justify-between text-xs text-muted">
+                    <span className="font-semibold">{msg.author === "EQUIPE" ? "Equipe Ouvidoria" : "Você"}</span>
+                    <span>{msg.date}</span>
+                  </div>
+                  <p className="mt-2 text-ink">{msg.body}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
     </section>
   );
 }
