@@ -16,6 +16,7 @@
     "@selecon/contracts": "workspace:*",
     "@selecon/ui": "workspace:*",
     "gsap": "^3.12.7",
+    "three": "^0.170.0",
     "next": "^15.1.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
@@ -25,6 +26,7 @@
     "@types/node": "^22.10.5",
     "@types/react": "^19.0.2",
     "@types/react-dom": "^19.0.2",
+    "@types/three": "^0.170.0",
     "@eslint/eslintrc": "^3.2.0",
     "autoprefixer": "^10.4.20",
     "cross-env": "^7.0.3",

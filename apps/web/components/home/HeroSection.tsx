@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef } from "react";
+import { ParticleNetwork } from "@/components/three/ParticleNetwork";
 
 export function HeroSection() {
   const heroRef = useRef<HTMLElement>(null);
@@ -15,8 +16,7 @@ export function HeroSection() {
         .from("[data-hero-title]", { opacity: 0, y: 40, duration: 0.8 }, "-=0.3")
         .from("[data-hero-desc]", { opacity: 0, y: 30, duration: 0.7 }, "-=0.4")
         .from("[data-hero-cta]", { opacity: 0, y: 20, stagger: 0.12, duration: 0.6 }, "-=0.3")
-        .from("[data-hero-glow]", { opacity: 0, scale: 0.5, duration: 1.5, ease: "power2.out" }, "-=1")
-        .from("[data-hero-particles]", { opacity: 0, duration: 2 }, "-=1");
+        .from("[data-hero-glow]", { opacity: 0, scale: 0.5, duration: 1.5, ease: "power2.out" }, "-=1");
     }
     animate();
   }, []);
@@ -37,22 +37,8 @@ export function HeroSection() {
       <div data-hero-glow className="pointer-events-none absolute right-0 top-0 h-[400px] w-[400px] rounded-full bg-blue-700/10 blur-3xl" />
       <div data-hero-glow className="pointer-events-none absolute bottom-0 left-0 h-[300px] w-[300px] rounded-full bg-green/10 blur-3xl" />
 
-      {/* Floating particles (CSS only for now) */}
-      <div data-hero-particles className="pointer-events-none absolute inset-0 overflow-hidden">
-        {Array.from({ length: 20 }).map((_, i) => (
-          <div
-            key={i}
-            className="absolute h-1 w-1 rounded-full bg-white/20"
-            style={{
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-              animationDelay: `${Math.random() * 5}s`,
-              animationDuration: `${3 + Math.random() * 4}s`,
-              animation: `float ${3 + Math.random() * 4}s ease-in-out infinite alternate`,
-            }}
-          />
-        ))}
-      </div>
+      {/* Three.js Particle Network */}
+      <ParticleNetwork className="opacity-70" />
 
       {/* Grid overlay */}
       <div className="pointer-events-none absolute inset-0 opacity-[0.03]" style={{ backgroundImage: "linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)", backgroundSize: "60px 60px" }} />
@@ -120,10 +106,6 @@ export function HeroSection() {
       <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-[#f5f8fa] to-transparent" />
 
       <style jsx>{`
-        @keyframes float {
-          from { transform: translateY(0) translateX(0); opacity: 0.2; }
-          to { transform: translateY(-20px) translateX(10px); opacity: 0.6; }
-        }
         .bg-gradient-radial {
           background: radial-gradient(circle, var(--tw-gradient-from), var(--tw-gradient-via), var(--tw-gradient-to));
         }
