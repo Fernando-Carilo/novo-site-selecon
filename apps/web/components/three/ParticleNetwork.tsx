@@ -22,7 +22,7 @@ export function ParticleNetwork({ className = "" }: { className?: string }) {
     let disposed = false;
 
     async function init() {
-      const THREE = await import("three");
+      const THREE = await import("three") as any;
 
       if (disposed || !canvasRef.current) return;
 
@@ -85,7 +85,7 @@ export function ParticleNetwork({ className = "" }: { className?: string }) {
         blending: THREE.AdditiveBlending,
       });
 
-      let linesMesh: THREE.LineSegments | null = null;
+      let linesMesh: any = null;
       const CONNECTION_DISTANCE = 6;
 
       function updateLines() {
