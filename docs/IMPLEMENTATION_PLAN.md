@@ -95,6 +95,22 @@ Entregas desta fase:
 - CI configurado (não necessariamente executado em um runner real nesta sessão, mas
   validado localmente com os mesmos comandos).
 
+## Incremento visual pré-Fase 1 (portal público)
+
+Entregue antes do protótipo, com base apenas nos tokens e nas seções 5 e 9 do prompt mestre;
+deve ser revisado contra `selecon-portal-v2.html` quando o arquivo chegar:
+
+- `packages/ui`: tokens com canais RGB (opacidade via Tailwind), elevação (`--shadow-*`),
+  `--radius-xl`, `Button` com `size`.
+- Home (9.2): hero com busca de concursos (form GET para `/concursos?q=`), painel da jornada
+  do candidato, atalhos em cards e aviso explícito de fase. Concursos em destaque,
+  publicações, campanhas, notícias e parceiros aguardam CMS/catálogo (Fases 2 e 3).
+- Shell: header fixo com estado ativo (`aria-current`), menu mobile acessível sobre
+  `<dialog>` nativo (foco preso, `Esc`, backdrop), footer em colunas, `PlaceholderPage`
+  com navegação lateral, página 404, fonte Inter auto-hospedada e metadata/OpenGraph.
+- Pendências para a Fase 1: logotipo oficial (hoje monograma provisório), itens de menu
+  O Instituto / Notícias / Fale Conosco, catálogo de componentes e regressão visual.
+
 ## Próximos passos após a Fase 0
 
 1. Solicitar `selecon-portal-v2.html` para destravar fidelidade visual da Fase 1.
