@@ -1,26 +1,47 @@
 /**
  * Variáveis CSS geradas a partir de tokens.ts — consumidas pelo tailwind.config de apps/web.
  * Mantenha os dois arquivos sincronizados; não hardcode cores fora daqui (seção 5.2).
+ *
+ * Cada cor possui a variante `-rgb` (canais separados por espaço) para permitir
+ * modificadores de opacidade do Tailwind (`bg-action-blue/10`) sem duplicar valores.
  */
 :root {
   --color-navy-primary: #071b3d;
+  --color-navy-primary-rgb: 7 27 61;
   --color-navy-secondary: #0b2d60;
+  --color-navy-secondary-rgb: 11 45 96;
   --color-action-blue: #0b66d4;
+  --color-action-blue-rgb: 11 102 212;
   --color-support-cyan: #23b5e8;
+  --color-support-cyan-rgb: 35 181 232;
   --color-institutional-red: #d52b3f;
+  --color-institutional-red-rgb: 213 43 63;
   --color-success-green: #12805c;
+  --color-success-green-rgb: 18 128 92;
   --color-background-light: #f3f7fb;
+  --color-background-light-rgb: 243 247 251;
   --color-surface: #ffffff;
+  --color-surface-rgb: 255 255 255;
   --color-text-primary: #14233d;
+  --color-text-primary-rgb: 20 35 61;
   --color-text-secondary: #61708a;
+  --color-text-secondary-rgb: 97 112 138;
   --color-border: #dce6f2;
+  --color-border-rgb: 220 230 242;
 
-  --font-family-base: "Inter", "Public Sans", system-ui, -apple-system, sans-serif;
+  /* `--font-inter` é injetada por `next/font` em apps/web; fora do Next cai no fallback. */
+  --font-family-base:
+    var(--font-inter, "Inter"), "Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
 
   --radius-sm: 0.25rem;
   --radius-md: 0.5rem;
   --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
   --radius-full: 9999px;
+
+  --shadow-low: 0 1px 2px 0 rgb(7 27 61 / 0.06);
+  --shadow-medium: 0 4px 12px 0 rgb(7 27 61 / 0.1);
+  --shadow-high: 0 12px 32px 0 rgb(7 27 61 / 0.16);
 
   --focus-ring-width: 3px;
   --focus-ring-color: var(--color-action-blue);
