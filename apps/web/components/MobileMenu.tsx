@@ -57,7 +57,7 @@ export function MobileMenu() {
         ref={dialogRef}
         onClick={closeOnBackdrop}
         aria-label="Menu de navegação"
-        className="bg-surface text-text-primary shadow-high backdrop:bg-navy-primary/60 m-0 ml-auto h-dvh max-h-none w-full max-w-sm border-0 p-0 backdrop:backdrop-blur-sm"
+        className="bg-surface text-text-primary shadow-high backdrop:bg-navy-primary/60 m-0 ml-auto h-dvh max-h-none w-full max-w-[20rem] border-0 p-0 backdrop:backdrop-blur-sm"
       >
         <div className="flex h-full flex-col">
           <div className="border-border flex items-center justify-between border-b px-4 py-3">
