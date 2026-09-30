@@ -10,30 +10,30 @@ Docker não estava disponível no sandbox de execução desta sessão; ver nota 
 
 ### Comandos executados e resultado real
 
-| Comando | Resultado |
-|---|---|
-| `pnpm install` | ✅ Sucesso — 11 workspaces, 682 pacotes resolvidos |
-| `pnpm --filter @selecon/db exec prisma validate` | ✅ Schema válido |
+| Comando                                                         | Resultado                                                                                                                                       |
+| --------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm install`                                                  | ✅ Sucesso — 11 workspaces, 682 pacotes resolvidos                                                                                              |
+| `pnpm --filter @selecon/db exec prisma validate`                | ✅ Schema válido                                                                                                                                |
 | `pnpm --filter @selecon/db exec prisma migrate dev --name init` | ✅ Migração aplicada — 7 schemas Postgres criados (`identity`, `content`, `contests`, `service`, `whistleblowing`, `advertising`, `governance`) |
-| `pnpm --filter @selecon/db exec tsx prisma/seed.ts` | ✅ Seed fictício aplicado sem erros |
-| `pnpm format` (prettier --check) | ✅ Todos os arquivos formatados |
-| `pnpm lint` | ✅ 17/17 pacotes/apps sem erros |
-| `pnpm typecheck` | ✅ 17/17 pacotes/apps sem erros |
-| `pnpm test` | ✅ 17/17 pacotes com testes executados, **17 testes passando**, 0 falhas |
-| `pnpm build` | ✅ 10/10 pacotes/apps com build gerado com sucesso |
+| `pnpm --filter @selecon/db exec tsx prisma/seed.ts`             | ✅ Seed fictício aplicado sem erros                                                                                                             |
+| `pnpm format` (prettier --check)                                | ✅ Todos os arquivos formatados                                                                                                                 |
+| `pnpm lint`                                                     | ✅ 17/17 pacotes/apps sem erros                                                                                                                 |
+| `pnpm typecheck`                                                | ✅ 17/17 pacotes/apps sem erros                                                                                                                 |
+| `pnpm test`                                                     | ✅ 17/17 pacotes com testes executados, **17 testes passando**, 0 falhas                                                                        |
+| `pnpm build`                                                    | ✅ 10/10 pacotes/apps com build gerado com sucesso                                                                                              |
 
 ### Testes por pacote (Vitest)
 
-| Pacote | Arquivo de teste | Testes |
-|---|---|---|
-| `@selecon/config` | `src/env.test.ts` | 3 passando |
-| `@selecon/contracts` | `src/contest/contest.test.ts` | 2 passando |
-| `@selecon/auth` | `src/policy.test.ts` | 4 passando |
-| `@selecon/integrations` | `src/health-check.test.ts` | 4 passando |
-| `@selecon/observability` | `src/correlation.test.ts` | 2 passando |
-| `@selecon/api` | `src/health/health.service.test.ts` | 1 passando |
-| `@selecon/worker` | `src/jobs/example-job.test.ts` | 1 passando |
-| `@selecon/db`, `@selecon/ui`, `@selecon/web` | — | sem testes ainda (nenhuma regra de negócio de UI/domínio implementada nesta fase) |
+| Pacote                                       | Arquivo de teste                    | Testes                                                                            |
+| -------------------------------------------- | ----------------------------------- | --------------------------------------------------------------------------------- |
+| `@selecon/config`                            | `src/env.test.ts`                   | 3 passando                                                                        |
+| `@selecon/contracts`                         | `src/contest/contest.test.ts`       | 2 passando                                                                        |
+| `@selecon/auth`                              | `src/policy.test.ts`                | 4 passando                                                                        |
+| `@selecon/integrations`                      | `src/health-check.test.ts`          | 4 passando                                                                        |
+| `@selecon/observability`                     | `src/correlation.test.ts`           | 2 passando                                                                        |
+| `@selecon/api`                               | `src/health/health.service.test.ts` | 1 passando                                                                        |
+| `@selecon/worker`                            | `src/jobs/example-job.test.ts`      | 1 passando                                                                        |
+| `@selecon/db`, `@selecon/ui`, `@selecon/web` | —                                   | sem testes ainda (nenhuma regra de negócio de UI/domínio implementada nesta fase) |
 
 **Total: 17 testes, 17 passando, 0 falhando.**
 
@@ -45,7 +45,7 @@ Docker não estava disponível no sandbox de execução desta sessão; ver nota 
   `GET /health/ready` → `200 {"status":"ok"}` (checagem real de conexão Postgres + Redis);
   `GET /docs` (OpenAPI/Swagger UI) → `200`.
 - `apps/worker` (`node dist/main.js`): conectou ao Redis real, log `"apps/worker pronto e
-  conectado ao Redis"`, encerramento gracioso (`SIGTERM`) confirmado.
+conectado ao Redis"`, encerramento gracioso (`SIGTERM`) confirmado.
 
 ### Nota sobre o ambiente de validação
 
