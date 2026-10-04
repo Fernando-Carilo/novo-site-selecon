@@ -5,9 +5,9 @@ export interface NavItem {
 }
 
 /**
- * Navegação principal orientada por tarefa (seção 9.1). Menu completo (O Instituto,
- * Notícias, Fale Conosco) chega nas Fases 2 e 5, quando essas páginas existirem de fato —
- * nenhum item aponta para uma rota inexistente (regra 3.11).
+ * Navegação principal orientada por tarefa (seção 9.1). Só rotas que existem de fato:
+ * concursos e notícias vêm da Selecon Central; atendimento e integridade apontam para os
+ * canais reais (regra 3.11 — nada de funcionalidade simulada).
  */
 export const NAV_ITEMS: readonly NavItem[] = [
   {
@@ -16,9 +16,14 @@ export const NAV_ITEMS: readonly NavItem[] = [
     description: "Editais, inscrições abertas e resultados",
   },
   {
+    href: "/noticias",
+    label: "Notícias",
+    description: "Comunicados oficiais dos concursos",
+  },
+  {
     href: "/atendimento",
     label: "Atendimento",
-    description: "Tire dúvidas e acompanhe protocolos",
+    description: "Tire dúvidas pelo chat, WhatsApp ou e-mail",
   },
   {
     href: "/denuncias",

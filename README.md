@@ -58,3 +58,16 @@ Este repositório está na **Fase 0 (fundação)**. Nenhuma integração externa
 (Microsoft Graph, WhatsApp Cloud API, sistema do candidato) está habilitada — todas usam
 implementações mock documentadas em `docs/INTEGRATIONS.md`. Nenhuma infraestrutura AWS foi
 provisionada. Detalhes completos em `docs/IMPLEMENTATION_PLAN.md` e `docs/ASSUMPTIONS.md`.
+
+## Conteúdo e canais vindos da Selecon Central
+
+O portal é a vitrine; quem gere o conteúdo é a **Selecon Central** (repositório `atendimento-selecon`,
+menu _Site público_), com o ProSeleta como base dos certames. As páginas `/concursos`,
+`/concursos/[slug]`, `/noticias`, `/noticias/[slug]` e `/institucional/[slug]`, além das seções
+"Concursos em destaque" e "Últimas notícias" da home, leem de `CONTENT_API_URL`
+(`https://atendimento.selecon.org.br/api`). O chat de `/atendimento` é o widget da Central
+(`SITE_CENTRAL_URL`); WhatsApp, telefone e e-mail aparecem quando `SITE_WHATSAPP_NUMBER`,
+`SITE_CONTACT_PHONE` e `SITE_CONTACT_EMAIL` estão definidos; `/denuncias` leva ao canal de
+denúncias (`SITE_DENUNCIAS_URL`). Todas são lidas em tempo de execução — nenhuma funcionalidade é
+simulada: sem configuração, a página mostra estado vazio. Desenho completo em
+`docs/SELECON_CENTRAL.md` do repositório da Central.

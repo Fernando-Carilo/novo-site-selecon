@@ -46,12 +46,27 @@ export function SiteFooter() {
 
           <div className="md:col-span-3 md:col-start-10">
             <h2 className="text-xs font-semibold uppercase tracking-[0.14em] text-white/60">
-              Status do portal
+              Instituto
             </h2>
-            <p className="mt-4 text-sm leading-relaxed text-white/75">
-              Fase 0 — fundação. Conteúdo institucional, política de privacidade e transparência
-              serão publicados nas próximas fases.
-            </p>
+            <ul className="mt-4 space-y-2.5">
+              {[
+                { href: "/institucional/quem-somos", label: "Quem somos" },
+                { href: "/institucional/transparencia", label: "Transparência" },
+                {
+                  href: "/institucional/politica-de-privacidade",
+                  label: "Política de privacidade",
+                },
+              ].map((item) => (
+                <li key={item.href}>
+                  <Link
+                    href={item.href}
+                    className="inline-flex min-h-8 items-center text-sm text-white/85 underline-offset-4 transition-colors hover:text-white hover:underline"
+                  >
+                    {item.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
           </div>
         </div>
 

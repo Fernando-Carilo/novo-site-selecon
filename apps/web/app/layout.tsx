@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { SkipLink } from "@selecon/ui";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
+import { WhatsAppButton } from "@/components/WhatsAppButton";
 import "./globals.css";
 
 // Fonte auto-hospedada pelo Next (sem requisição ao Google em runtime — regra 13.1/13.2).
@@ -16,7 +17,7 @@ const inter = Inter({
 
 const SITE_NAME = "Instituto Selecon";
 const SITE_DESCRIPTION =
-  "Portal Integrado do Instituto Selecon — concursos públicos, área do candidato, atendimento e canal de integridade em um único lugar.";
+  "Portal do Instituto Selecon — concursos públicos, notícias, área do candidato, atendimento e canal de integridade em um único lugar.";
 
 export const metadata: Metadata = {
   title: {
@@ -41,6 +42,11 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
+// Conteúdo e canais vêm da Selecon Central e de variáveis do ambiente de execução
+// (não do build): toda rota é renderizada por requisição, com cache de 60 s nas
+// chamadas à Central (lib/central.ts).
+export const dynamic = "force-dynamic";
+
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="pt-BR" className={inter.variable}>
@@ -51,6 +57,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           {children}
         </main>
         <SiteFooter />
+        <WhatsAppButton />
       </body>
     </html>
   );

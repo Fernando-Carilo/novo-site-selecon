@@ -1,18 +1,19 @@
+import { FeaturedContests } from "@/components/home/FeaturedContests";
 import { Hero } from "@/components/home/Hero";
-import { PhaseNotice } from "@/components/home/PhaseNotice";
+import { LatestNews } from "@/components/home/LatestNews";
 import { Shortcuts } from "@/components/home/Shortcuts";
 
 /**
- * Home — seção 9.2. Nesta fase entrega os itens 1 (hero com busca), 2 (atalhos) e 5
- * (jornada do candidato, no painel do hero). Concursos em destaque, publicações, campanhas,
- * notícias e parceiros dependem de CMS/catálogo (Fases 2 e 3) e não são simulados aqui.
+ * Home — hero com busca, concursos em destaque e últimas notícias (ambos vindos da
+ * Selecon Central; as seções só aparecem quando há conteúdo publicado) e atalhos.
  */
 export default function HomePage() {
   return (
     <>
       <Hero />
+      <FeaturedContests />
       <Shortcuts />
-      <PhaseNotice />
+      <LatestNews />
     </>
   );
 }
