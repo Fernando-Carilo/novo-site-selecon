@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { buttonClassNames } from "@selecon/ui";
 import { ArrowRightIcon, FileSearchIcon, LockIcon, ShieldIcon } from "@/components/icons";
 
@@ -8,15 +9,12 @@ export const metadata: Metadata = {
     "Canal de integridade do Instituto Selecon: relate irregularidades com sigilo e acompanhe pelo protocolo.",
 };
 
-const channelUrl = () =>
-  (process.env.SITE_DENUNCIAS_URL ?? "https://denuncias.selecon.org.br").replace(/\/+$/, "");
-
 const POINTS = [
   {
     icon: LockIcon,
     title: "Sigilo e anonimato",
     description:
-      "Você pode relatar sem se identificar. O relato fica em ambiente segregado, com acesso restrito à Ouvidoria.",
+      "Você pode relatar sem se identificar. O relato fica em ambiente de acesso restrito à Ouvidoria, com trilha de auditoria de cada acesso.",
   },
   {
     icon: FileSearchIcon,
@@ -28,16 +26,12 @@ const POINTS = [
     icon: ShieldIcon,
     title: "Apuração independente",
     description:
-      "Cada caso é distribuído a um responsável, com prazos e trilha de auditoria de todas as ações.",
+      "Cada caso é distribuído a um responsável, com prazos por etapa e registro de todas as ações.",
   },
 ];
 
-/**
- * Entrada do canal de integridade. O registro e a consulta acontecem no canal de
- * denúncias — ambiente próprio, segregado por sigilo — e não neste portal.
- */
+/** Entrada do canal de integridade. O registro e a consulta ficam neste portal, atendidos pela Selecon Central. */
 export default function WhistleblowingPage() {
-  const CHANNEL_URL = channelUrl();
   return (
     <section className="mx-auto max-w-6xl px-4 py-14 sm:px-6 sm:py-20">
       <div className="grid gap-12 lg:grid-cols-12">
@@ -54,23 +48,17 @@ export default function WhistleblowingPage() {
             sigiloso e aceita relatos anônimos.
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-            <a
-              href={`${CHANNEL_URL}/denuncia/nova`}
-              className={buttonClassNames("primary", "", "lg")}
-            >
+            <Link href="/denuncias/nova" className={buttonClassNames("primary", "", "lg")}>
               Registrar uma denúncia
               <ArrowRightIcon className="h-5 w-5" />
-            </a>
-            <a
-              href={`${CHANNEL_URL}/consultar`}
-              className={buttonClassNames("secondary", "", "lg")}
-            >
+            </Link>
+            <Link href="/denuncias/consultar" className={buttonClassNames("secondary", "", "lg")}>
               Consultar pelo protocolo
-            </a>
+            </Link>
           </div>
           <p className="text-text-secondary mt-4 text-sm">
-            Você será levado ao canal de denúncias ({CHANNEL_URL.replace(/^https?:\/\//, "")}),
-            ambiente próprio e segregado do portal.
+            Em situação de risco imediato à integridade física, procure também as autoridades
+            competentes.
           </p>
         </div>
         <ul className="space-y-4 lg:col-span-4 lg:col-start-9">
