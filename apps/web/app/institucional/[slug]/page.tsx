@@ -2,9 +2,13 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import type { ContentPageDetail } from "@selecon/contracts";
 import { fetchApiOrNull } from "@/lib/api-server";
+import { PublicationBody } from "@/components/content/PublicationBody";
 
-async function getPage(slug: string): Promise<ContentPageDetail | null> {
-  return fetchApiOrNull<ContentPageDetail>(`/public/content/pages/${slug}`);
+// Campo extra enviado pela Selecon Central (ausente no apps/api local).
+type PageFromCentral = ContentPageDetail & { bodyFormat?: "TEXT" | "HTML" | null };
+
+async function getPage(slug: string): Promise<PageFromCentral | null> {
+  return fetchApiOrNull<PageFromCentral>(`/public/content/pages/${slug}`);
 }
 
 export async function generateMetadata({
@@ -26,9 +30,7 @@ export default async function InstitutionalPage({ params }: { params: Promise<{ 
   return (
     <article className="mx-auto max-w-3xl px-4 py-12">
       <h1 className="text-navy-primary text-3xl font-bold">{page.title}</h1>
-      <div className="text-text-primary mt-6 whitespace-pre-wrap text-base leading-relaxed">
-        {page.body}
-      </div>
+      <PublicationBody body={page.body} format={page.bodyFormat} />
     </article>
   );
 }

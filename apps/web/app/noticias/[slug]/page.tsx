@@ -2,9 +2,13 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import type { NewsPostDetail } from "@selecon/contracts";
 import { fetchApiOrNull } from "@/lib/api-server";
+import { PublicationBody } from "@/components/content/PublicationBody";
 
-async function getNews(slug: string): Promise<NewsPostDetail | null> {
-  return fetchApiOrNull<NewsPostDetail>(`/public/content/news/${slug}`);
+// Campos extras enviados pela Selecon Central (ausentes no apps/api local).
+type NewsFromCentral = NewsPostDetail & { bodyFormat?: "TEXT" | "HTML" | null; coverUrl?: string | null };
+
+async function getNews(slug: string): Promise<NewsFromCentral | null> {
+  return fetchApiOrNull<NewsFromCentral>(`/public/content/news/${slug}`);
 }
 
 export async function generateMetadata({
@@ -36,9 +40,11 @@ export default async function NewsDetailPage({ params }: { params: Promise<{ slu
           {new Date(post.publishedAt).toLocaleDateString("pt-BR")}
         </p>
       )}
-      <div className="text-text-primary mt-6 whitespace-pre-wrap text-base leading-relaxed">
-        {post.body}
-      </div>
+      {post.coverUrl && (
+        // eslint-disable-next-line @next/next/no-img-element -- origem externa (Central/S3), sem domínio fixo para next/image
+        <img src={post.coverUrl} alt="" className="mt-6 h-auto w-full rounded-lg" />
+      )}
+      <PublicationBody body={post.body} format={post.bodyFormat} />
     </article>
   );
 }
