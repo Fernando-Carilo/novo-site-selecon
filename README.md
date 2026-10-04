@@ -101,6 +101,17 @@ scripts/check-aws-dev.sh   # somente leitura — inventário do ambiente
 scripts/rollback-eb-dev.sh # reverte o Elastic Beanstalk para a versão anterior
 ```
 
+## Conteúdo vindo da Selecon Central
+
+Notícias, páginas institucionais e o catálogo de concursos são geridos na **Selecon Central**
+(repositório `atendimento-selecon`, menu *Site público*), que tem o ProSeleta como base dos
+certames. O site é a vitrine: as páginas `/noticias`, `/institucional/[slug]`, `/concursos` e
+`/concursos/[slug]` leem de `CONTENT_API_URL` (ex.: `https://atendimento.selecon.org.br/api`)
+pelos mesmos endpoints e contratos (`/public/content/news`, `/public/content/pages/:slug`,
+`/public/contests`, `/public/contests/:slug`). Sem `CONTENT_API_URL`, caem em `API_INTERNAL_URL`
+(apps/api local). Login, proxy do navegador e demais rotas não mudam. Desenho completo em
+`docs/SELECON_CENTRAL.md` do repositório da Central.
+
 ## Status do projeto
 
 Todas as fases funcionais (portal público, concursos, atendimento, denúncias, anúncios, CMS,

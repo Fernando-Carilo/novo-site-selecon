@@ -58,6 +58,12 @@ export default async function NewsListPage() {
                       {post.title}
                     </Link>
                   </h3>
+                  {/* Resumo: campo extra enviado pela Selecon Central; ausente no apps/api local. */}
+                  {(post as NewsPostSummary & { summary?: string | null }).summary && (
+                    <p className="mt-2 text-sm leading-relaxed text-muted">
+                      {(post as NewsPostSummary & { summary?: string | null }).summary}
+                    </p>
+                  )}
                   {post.publishedAt && (
                     <p className="mt-2 text-xs text-muted">
                       {new Date(post.publishedAt).toLocaleDateString("pt-BR", {
