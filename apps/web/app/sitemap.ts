@@ -3,7 +3,11 @@ import { getContentProvider } from "@/lib/content";
 import { SITE_URL } from "@/lib/site";
 
 /** Rotas públicas estáticas do portal (mantenha em sincronia com `lib/site.ts`). */
-export const STATIC_ROUTES: { path: string; priority: number; changeFrequency: MetadataRoute.Sitemap[number]["changeFrequency"] }[] = [
+export const STATIC_ROUTES: {
+  path: string;
+  priority: number;
+  changeFrequency: MetadataRoute.Sitemap[number]["changeFrequency"];
+}[] = [
   { path: "/", priority: 1, changeFrequency: "daily" },
   { path: "/concursos", priority: 0.9, changeFrequency: "daily" },
   { path: "/candidato", priority: 0.8, changeFrequency: "monthly" },
@@ -37,8 +41,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       return {
         url: `${SITE_URL}/concursos/${slug}`,
         lastModified: contest ? new Date(`${contest.updatedAt}T12:00:00-03:00`) : now,
-        changeFrequency: (contest?.status === "ENCERRADO" ? "yearly" : "weekly") as "yearly" | "weekly",
-        priority: contest?.status === "INSCRICOES_ABERTAS" ? 0.9 : contest?.status === "ENCERRADO" ? 0.3 : 0.6,
+        changeFrequency: (contest?.status === "ENCERRADO" ? "yearly" : "weekly") as
+          "yearly" | "weekly",
+        priority:
+          contest?.status === "INSCRICOES_ABERTAS"
+            ? 0.9
+            : contest?.status === "ENCERRADO"
+              ? 0.3
+              : 0.6,
       };
     }),
   );
@@ -63,5 +73,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "monthly" as const,
       priority: 0.5,
     })),
-  ].filter((entry, index, all) => all.findIndex((other) => other.url === entry.url) === index && catalog.total >= 0);
+  ].filter(
+    (entry, index, all) =>
+      all.findIndex((other) => other.url === entry.url) === index && catalog.total >= 0,
+  );
 }

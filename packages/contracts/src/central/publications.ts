@@ -69,7 +69,14 @@ export const portalContestSchema = z.object({
     shortName: z.string(),
     city: z.string(),
     uf: z.string().length(2),
-    sphere: z.enum(["MUNICIPAL", "ESTADUAL", "FEDERAL", "AUTARQUIA", "EMPRESA_PUBLICA", "CONSORCIO"]),
+    sphere: z.enum([
+      "MUNICIPAL",
+      "ESTADUAL",
+      "FEDERAL",
+      "AUTARQUIA",
+      "EMPRESA_PUBLICA",
+      "CONSORCIO",
+    ]),
   }),
   area: contestAreaSchema,
   summary: z.string(),
@@ -105,7 +112,15 @@ export const portalContestSchema = z.object({
   faqs: z.array(z.object({ question: z.string(), answer: z.string() })),
   serviceLinks: z.array(
     z.object({
-      key: z.enum(["INSCRICAO", "AREA_DO_CANDIDATO", "BOLETO", "LOCAL_DE_PROVA", "RECURSO", "RESULTADO", "LEGADO"]),
+      key: z.enum([
+        "INSCRICAO",
+        "AREA_DO_CANDIDATO",
+        "BOLETO",
+        "LOCAL_DE_PROVA",
+        "RECURSO",
+        "RESULTADO",
+        "LEGADO",
+      ]),
       label: z.string(),
       url: z.string().url(),
       external: z.literal(true),
@@ -140,5 +155,7 @@ export type PortalNewsPost = z.infer<typeof portalNewsPostSchema>;
 export const portalEnvelopeSchema = <T extends z.ZodTypeAny>(data: T) =>
   z.object({
     data,
-    meta: z.object({ total: z.number().int().optional(), generatedAt: z.string().optional() }).optional(),
+    meta: z
+      .object({ total: z.number().int().optional(), generatedAt: z.string().optional() })
+      .optional(),
   });

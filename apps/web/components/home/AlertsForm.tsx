@@ -60,7 +60,10 @@ export function AlertsForm({ contestSlug, compact = false }: AlertsFormProps) {
         label={
           <>
             Concordo em receber alertas por e-mail sobre editais e publicações, conforme a{" "}
-            <Link href="/privacidade" className="font-semibold text-action-blue underline underline-offset-4">
+            <Link
+              href="/privacidade"
+              className="text-action-blue font-semibold underline underline-offset-4"
+            >
               política de privacidade
             </Link>
             . Posso cancelar a qualquer momento.

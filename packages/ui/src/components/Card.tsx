@@ -21,9 +21,9 @@ export function Card({
   return (
     <Tag
       className={[
-        "rounded-lg border border-border bg-surface shadow-low",
+        "border-border bg-surface shadow-low rounded-lg border",
         interactive
-          ? "transition-shadow duration-base hover:shadow-medium focus-within:ring-[3px] focus-within:ring-action-blue"
+          ? "duration-base hover:shadow-medium focus-within:ring-action-blue transition-shadow focus-within:ring-[3px]"
           : "",
         PADDING[padding],
         className,

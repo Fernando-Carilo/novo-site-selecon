@@ -13,7 +13,11 @@ export interface BreadcrumbsProps {
 }
 
 /** Trilha de navegação semântica (seção 13.1) — o último item é a página atual. */
-export function Breadcrumbs({ items, linkComponent: LinkComponent, className = "" }: BreadcrumbsProps) {
+export function Breadcrumbs({
+  items,
+  linkComponent: LinkComponent,
+  className = "",
+}: BreadcrumbsProps) {
   return (
     <nav aria-label="Trilha de navegação" className={`text-sm ${className}`}>
       <ol className="flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -29,14 +33,14 @@ export function Breadcrumbs({ items, linkComponent: LinkComponent, className = "
               {item.href && !isLast ? (
                 <LinkComponent
                   href={item.href}
-                  className="text-text-secondary underline-offset-4 hover:text-action-blue hover:underline focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-action-blue"
+                  className="text-text-secondary hover:text-action-blue focus-visible:ring-action-blue underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-[3px]"
                 >
                   {item.label}
                 </LinkComponent>
               ) : (
                 <span
                   aria-current={isLast ? "page" : undefined}
-                  className="font-medium text-navy-primary"
+                  className="text-navy-primary font-medium"
                 >
                   {item.label}
                 </span>

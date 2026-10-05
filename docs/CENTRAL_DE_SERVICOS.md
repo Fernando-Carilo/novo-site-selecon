@@ -9,27 +9,27 @@ consumidor: renderiza o que a Central publica e envia para ela o que o cidadão/
 
 ## 1. Fronteira e responsabilidades
 
-| Responsabilidade | Central de Serviços | Portal (`apps/web`) |
-| --- | --- | --- |
-| Cadastro, workflow editorial (autor ≠ aprovador), agendamento e versionamento de editais/publicações | ✅ | — |
-| Notícias e comunicados (rascunho → revisão → publicação) | ✅ | — |
-| Fotos oficiais dos concursos (alta resolução, com `alt`) | ✅ | exibe via `next/image` (`cover.imageUrl`) |
-| Renderização pública, SEO, sitemap, redirects, acessibilidade | — | ✅ |
-| Capa vetorial quando não há foto (`ContestCover`) | — | ✅ |
-| Fila **Comercial** (leads classificados por tipo de projeto) | ✅ recebe e trata | ✅ coleta e envia |
-| Fila **Atendimento** (tickets do Fale Conosco, consulta de protocolo) | ✅ | ✅ coleta e envia |
-| Assinaturas de alerta de editais (double opt-in, descadastro) | ✅ | ✅ coleta e envia |
+| Responsabilidade                                                                                     | Central de Serviços | Portal (`apps/web`)                       |
+| ---------------------------------------------------------------------------------------------------- | ------------------- | ----------------------------------------- |
+| Cadastro, workflow editorial (autor ≠ aprovador), agendamento e versionamento de editais/publicações | ✅                  | —                                         |
+| Notícias e comunicados (rascunho → revisão → publicação)                                             | ✅                  | —                                         |
+| Fotos oficiais dos concursos (alta resolução, com `alt`)                                             | ✅                  | exibe via `next/image` (`cover.imageUrl`) |
+| Renderização pública, SEO, sitemap, redirects, acessibilidade                                        | —                   | ✅                                        |
+| Capa vetorial quando não há foto (`ContestCover`)                                                    | —                   | ✅                                        |
+| Fila **Comercial** (leads classificados por tipo de projeto)                                         | ✅ recebe e trata   | ✅ coleta e envia                         |
+| Fila **Atendimento** (tickets do Fale Conosco, consulta de protocolo)                                | ✅                  | ✅ coleta e envia                         |
+| Assinaturas de alerta de editais (double opt-in, descadastro)                                        | ✅                  | ✅ coleta e envia                         |
 
 ## 2. Configuração no portal
 
-| Variável | Valor | Efeito |
-| --- | --- | --- |
-| `CONTENT_SOURCE` | `static` (padrão) \| `central` | origem de concursos e notícias |
-| `CENTRAL_SERVICOS_API_URL` | `https://.../api` | base URL (obrigatória em `central`) |
-| `CENTRAL_SERVICOS_API_TOKEN` | segredo | Bearer token de leitura/escrita do portal (Secrets Manager) |
-| `CENTRAL_SERVICOS_REVALIDATE_SECONDS` | `300` | ISR das leituras |
-| `SUBMISSIONS_MODE` | `mock` \| `central` | destino dos formulários; em produção `mock` precisa ser explícito |
-| `NEXT_IMAGE_EXTRA_HOST` | host da CDN | libera imagens remotas da Central |
+| Variável                              | Valor                          | Efeito                                                            |
+| ------------------------------------- | ------------------------------ | ----------------------------------------------------------------- |
+| `CONTENT_SOURCE`                      | `static` (padrão) \| `central` | origem de concursos e notícias                                    |
+| `CENTRAL_SERVICOS_API_URL`            | `https://.../api`              | base URL (obrigatória em `central`)                               |
+| `CENTRAL_SERVICOS_API_TOKEN`          | segredo                        | Bearer token de leitura/escrita do portal (Secrets Manager)       |
+| `CENTRAL_SERVICOS_REVALIDATE_SECONDS` | `300`                          | ISR das leituras                                                  |
+| `SUBMISSIONS_MODE`                    | `mock` \| `central`            | destino dos formulários; em produção `mock` precisa ser explícito |
+| `NEXT_IMAGE_EXTRA_HOST`               | host da CDN                    | libera imagens remotas da Central                                 |
 
 Código: `apps/web/lib/content/central-provider.ts` (leitura) e `apps/web/lib/central/submissions.ts`
 (escrita). Contratos Zod compartilhados em `packages/contracts/src/central/`.
@@ -38,12 +38,12 @@ Código: `apps/web/lib/content/central-provider.ts` (leitura) e `apps/web/lib/ce
 
 Todas as respostas usam o envelope `{ "data": ..., "meta": { "total", "generatedAt" } }`.
 
-| Método | Caminho | Resposta (`data`) | Observações |
-| --- | --- | --- | --- |
-| GET | `/v1/portal/contests` | `PortalContest[]` | somente itens com status público; ordenados pela Central ou pelo portal |
-| GET | `/v1/portal/contests/{slug}` | `PortalContest` | 404 quando não publicado |
-| GET | `/v1/portal/news` | `PortalNewsPost[]` | publicadas, mais recentes primeiro |
-| GET | `/v1/portal/news/{slug}` | `PortalNewsPost` | 404 quando não publicada |
+| Método | Caminho                      | Resposta (`data`)  | Observações                                                             |
+| ------ | ---------------------------- | ------------------ | ----------------------------------------------------------------------- |
+| GET    | `/v1/portal/contests`        | `PortalContest[]`  | somente itens com status público; ordenados pela Central ou pelo portal |
+| GET    | `/v1/portal/contests/{slug}` | `PortalContest`    | 404 quando não publicado                                                |
+| GET    | `/v1/portal/news`            | `PortalNewsPost[]` | publicadas, mais recentes primeiro                                      |
+| GET    | `/v1/portal/news/{slug}`     | `PortalNewsPost`   | 404 quando não publicada                                                |
 
 Schemas: `portalContestSchema` e `portalNewsPostSchema` (`packages/contracts/src/central/publications.ts`).
 Regras que a Central deve garantir (seção 9.4 do prompt mestre):
@@ -70,12 +70,12 @@ Resposta `201` com `SubmissionReceipt`:
 { "protocol": "COM-2026-7F3A1C", "receivedAt": "2026-10-05T14:03:00Z", "queue": "COMERCIAL" }
 ```
 
-| Caminho | Corpo (Zod) | Fila | Origem no portal |
-| --- | --- | --- | --- |
-| `/v1/portal/commercial-leads` | `commercialLeadSchema` | `COMERCIAL` | `/comercial` |
-| `/v1/portal/tickets` | `createTicketRequestSchema` (inclui `contestSlug` opcional — slug público do concurso; `subject` traz o rótulo legível do assunto) | `ATENDIMENTO` | `/fale-conosco` |
-| `/v1/portal/alert-subscriptions` | `alertSubscriptionSchema` | `ALERTAS` | home, catálogo e página do edital |
-| `GET /v1/portal/tickets/{protocol}` | resposta `ticketLookupResultSchema` | — | consulta de protocolo em `/atendimento#protocolo` |
+| Caminho                             | Corpo (Zod)                                                                                                                        | Fila          | Origem no portal                                  |
+| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | ------------- | ------------------------------------------------- |
+| `/v1/portal/commercial-leads`       | `commercialLeadSchema`                                                                                                             | `COMERCIAL`   | `/comercial`                                      |
+| `/v1/portal/tickets`                | `createTicketRequestSchema` (inclui `contestSlug` opcional — slug público do concurso; `subject` traz o rótulo legível do assunto) | `ATENDIMENTO` | `/fale-conosco`                                   |
+| `/v1/portal/alert-subscriptions`    | `alertSubscriptionSchema`                                                                                                          | `ALERTAS`     | home, catálogo e página do edital                 |
+| `GET /v1/portal/tickets/{protocol}` | resposta `ticketLookupResultSchema`                                                                                                | —             | consulta de protocolo em `/atendimento#protocolo` |
 
 Consulta de protocolo — resposta `200`:
 

@@ -109,7 +109,7 @@ export function ContestCover({
   const hero = size === "hero";
 
   return (
-    <div className={`relative overflow-hidden bg-navy-primary ${className}`}>
+    <div className={`bg-navy-primary relative overflow-hidden ${className}`}>
       {cover.imageUrl ? (
         <Image
           src={cover.imageUrl}
@@ -150,7 +150,14 @@ export function ContestCover({
             <path d="M700 250 L880 250 L820 340 L640 340 Z" />
             <path d="M640 340 L820 340 L760 430 L580 430 Z" />
           </g>
-          <rect x="0" y="0" width="520" height="450" fill={`url(#${gradientId}-glow)`} opacity="0.35" />
+          <rect
+            x="0"
+            y="0"
+            width="520"
+            height="450"
+            fill={`url(#${gradientId}-glow)`}
+            opacity="0.35"
+          />
           <circle cx="110" cy="360" r="190" fill="#FFFFFF" opacity="0.05" />
           <g
             transform={hero ? "translate(560 210) scale(7.5)" : "translate(600 230) scale(6)"}
@@ -168,10 +175,10 @@ export function ContestCover({
       {plain ? null : (
         <>
           <div className="absolute left-4 top-4 flex items-center gap-2">
-            <span className="rounded-md bg-white/95 px-2.5 py-1 text-xs font-bold uppercase tracking-wide text-navy-primary shadow-low">
+            <span className="text-navy-primary shadow-low rounded-md bg-white/95 px-2.5 py-1 text-xs font-bold uppercase tracking-wide">
               {uf}
             </span>
-            <span className="hidden rounded-md bg-navy-primary/70 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur-sm sm:inline">
+            <span className="bg-navy-primary/70 hidden rounded-md px-2.5 py-1 text-xs font-semibold text-white backdrop-blur-sm sm:inline">
               {art.name}
             </span>
           </div>

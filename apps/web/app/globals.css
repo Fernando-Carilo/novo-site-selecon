@@ -5,7 +5,8 @@
 @tailwind utilities;
 
 :root {
-  --font-family-base: var(--font-inter), "Inter", "Public Sans", system-ui, -apple-system, sans-serif;
+  --font-family-base:
+    var(--font-inter), "Inter", "Public Sans", system-ui, -apple-system, sans-serif;
 }
 
 html {

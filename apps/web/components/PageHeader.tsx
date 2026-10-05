@@ -14,7 +14,15 @@ interface PageHeaderProps {
   tone?: "light" | "navy";
 }
 
-function BreadcrumbLink({ href, className, children }: { href: string; className?: string; children: ReactNode }) {
+function BreadcrumbLink({
+  href,
+  className,
+  children,
+}: {
+  href: string;
+  className?: string;
+  children: ReactNode;
+}) {
   return (
     <Link href={href} className={className}>
       {children}
@@ -34,25 +42,35 @@ export function PageHeader({
 }: PageHeaderProps) {
   const navy = tone === "navy";
   return (
-    <section className={navy ? "bg-navy-primary text-white" : "border-b border-border bg-surface"}>
+    <section className={navy ? "bg-navy-primary text-white" : "border-border bg-surface border-b"}>
       <Container className="py-8 sm:py-10">
         <Breadcrumbs
           items={breadcrumbs}
           linkComponent={BreadcrumbLink}
-          className={navy ? "[&_a]:text-white/80 [&_a:hover]:text-white [&_span]:text-white [&_span[aria-hidden]]:text-white/50" : ""}
+          className={
+            navy
+              ? "[&_a:hover]:text-white [&_a]:text-white/80 [&_span[aria-hidden]]:text-white/50 [&_span]:text-white"
+              : ""
+          }
         />
         <div className="mt-5 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-3xl">
             {eyebrow ? (
-              <p className={`text-sm font-semibold uppercase tracking-wide ${navy ? "text-support-cyan" : "text-action-blue"}`}>
+              <p
+                className={`text-sm font-semibold uppercase tracking-wide ${navy ? "text-support-cyan" : "text-action-blue"}`}
+              >
                 {eyebrow}
               </p>
             ) : null}
-            <h1 className={`mt-1 text-3xl font-bold leading-tight sm:text-4xl ${navy ? "text-white" : "text-navy-primary"}`}>
+            <h1
+              className={`mt-1 text-3xl font-bold leading-tight sm:text-4xl ${navy ? "text-white" : "text-navy-primary"}`}
+            >
               {title}
             </h1>
             {description ? (
-              <p className={`mt-3 text-base leading-relaxed sm:text-lg ${navy ? "text-white/85" : "text-text-secondary"}`}>
+              <p
+                className={`mt-3 text-base leading-relaxed sm:text-lg ${navy ? "text-white/85" : "text-text-secondary"}`}
+              >
                 {description}
               </p>
             ) : null}

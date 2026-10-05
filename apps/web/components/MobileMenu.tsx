@@ -73,7 +73,7 @@ export function MobileMenu({ primary, utility, candidate }: MobileMenuProps) {
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-controls="mobile-menu"
-        className="inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-md px-3 text-sm font-semibold text-navy-primary hover:bg-background-light"
+        className="text-navy-primary hover:bg-background-light inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-md px-3 text-sm font-semibold"
       >
         <Icon name="menu" size={22} />
         Menu
@@ -81,27 +81,23 @@ export function MobileMenu({ primary, utility, candidate }: MobileMenuProps) {
 
       {open ? (
         <div className="fixed inset-0 z-50">
-          <div
-            className="absolute inset-0 bg-navy-primary/60"
-            aria-hidden="true"
-            onClick={close}
-          />
+          <div className="bg-navy-primary/60 absolute inset-0" aria-hidden="true" onClick={close} />
           <div
             id="mobile-menu"
             ref={dialogRef}
             role="dialog"
             aria-modal="true"
             aria-labelledby={titleId}
-            className="absolute inset-y-0 right-0 flex w-full max-w-sm flex-col overflow-y-auto bg-surface shadow-high"
+            className="bg-surface shadow-high absolute inset-y-0 right-0 flex w-full max-w-sm flex-col overflow-y-auto"
           >
-            <div className="flex items-center justify-between border-b border-border px-4 py-3">
-              <p id={titleId} className="text-base font-bold text-navy-primary">
+            <div className="border-border flex items-center justify-between border-b px-4 py-3">
+              <p id={titleId} className="text-navy-primary text-base font-bold">
                 Navegação
               </p>
               <button
                 type="button"
                 onClick={close}
-                className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md text-navy-primary hover:bg-background-light"
+                className="text-navy-primary hover:bg-background-light inline-flex min-h-11 min-w-11 items-center justify-center rounded-md"
               >
                 <Icon name="x" size={22} label="Fechar menu" />
               </button>
@@ -113,23 +109,23 @@ export function MobileMenu({ primary, utility, candidate }: MobileMenuProps) {
                     <Link
                       href={item.href}
                       onClick={close}
-                      className="block rounded-md px-3 py-3 text-base font-semibold text-navy-primary hover:bg-background-light"
+                      className="text-navy-primary hover:bg-background-light block rounded-md px-3 py-3 text-base font-semibold"
                     >
                       {item.label}
                       {item.description ? (
-                        <span className="mt-0.5 block text-sm font-normal text-text-secondary">
+                        <span className="text-text-secondary mt-0.5 block text-sm font-normal">
                           {item.description}
                         </span>
                       ) : null}
                     </Link>
                     {item.children ? (
-                      <ul className="mb-2 ml-3 border-l border-border pl-3">
+                      <ul className="border-border mb-2 ml-3 border-l pl-3">
                         {item.children.map((child) => (
                           <li key={child.href}>
                             <Link
                               href={child.href}
                               onClick={close}
-                              className="block rounded-md px-3 py-2.5 text-sm text-text-primary hover:bg-background-light"
+                              className="text-text-primary hover:bg-background-light block rounded-md px-3 py-2.5 text-sm"
                             >
                               {child.label}
                             </Link>
@@ -151,14 +147,14 @@ export function MobileMenu({ primary, utility, candidate }: MobileMenuProps) {
                 {candidate.label}
               </Link>
             </div>
-            <nav aria-label="Links úteis" className="mt-auto border-t border-border px-4 py-4">
+            <nav aria-label="Links úteis" className="border-border mt-auto border-t px-4 py-4">
               <ul className="flex flex-wrap gap-x-4 gap-y-2 text-sm">
                 {utility.map((item) => (
                   <li key={item.href}>
                     <Link
                       href={item.href}
                       onClick={close}
-                      className="inline-block py-1 text-text-secondary underline-offset-4 hover:text-action-blue hover:underline"
+                      className="text-text-secondary hover:text-action-blue inline-block py-1 underline-offset-4 hover:underline"
                     >
                       {item.label}
                     </Link>

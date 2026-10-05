@@ -14,7 +14,11 @@ export interface NavItem {
 
 /** Navegação orientada por tarefa (seção 9.1). Todo item aponta para uma rota existente. */
 export const PRIMARY_NAV: NavItem[] = [
-  { href: "/concursos", label: "Concursos", description: "Catálogo, inscrições abertas e páginas de edital" },
+  {
+    href: "/concursos",
+    label: "Concursos",
+    description: "Catálogo, inscrições abertas e páginas de edital",
+  },
   {
     href: "/instituto",
     label: "O Instituto",
@@ -28,7 +32,11 @@ export const PRIMARY_NAV: NavItem[] = [
       { href: "/trabalhe-conosco", label: "Trabalhe conosco" },
     ],
   },
-  { href: "/servicos", label: "Serviços", description: "Soluções para órgãos públicos e instituições" },
+  {
+    href: "/servicos",
+    label: "Serviços",
+    description: "Soluções para órgãos públicos e instituições",
+  },
   { href: "/atendimento", label: "Atendimento", description: "Dúvidas, protocolo e Fale Conosco" },
   { href: "/integridade", label: "Integridade", description: "Canal de denúncias sigiloso" },
   { href: "/noticias", label: "Notícias", description: "Publicações e comunicados" },

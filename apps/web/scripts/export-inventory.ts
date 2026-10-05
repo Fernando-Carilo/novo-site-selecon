@@ -16,7 +16,10 @@ function csv(rows: Row[], columns: string[]): string {
     const text = value === undefined || value === null ? "" : String(value);
     return /[",\n;]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
   };
-  return [columns.join(","), ...rows.map((row) => columns.map((c) => escape(row[c])).join(","))].join("\n");
+  return [
+    columns.join(","),
+    ...rows.map((row) => columns.map((c) => escape(row[c])).join(",")),
+  ].join("\n");
 }
 
 const rows: Row[] = [];
@@ -35,7 +38,10 @@ for (const contest of CONTESTS) {
     documentos_externos: contest.publications.filter((p) => p.url).length,
     links_servico: contest.serviceLinks.length,
     atualizado_em: contest.updatedAt,
-    qualidade: contest.positions.length && contest.timeline.length ? "completo" : "parcial — complementar na Central",
+    qualidade:
+      contest.positions.length && contest.timeline.length
+        ? "completo"
+        : "parcial — complementar na Central",
   });
 }
 for (const post of NEWS) {
@@ -91,7 +97,21 @@ for (const redirect of legacyRedirects) {
   });
 }
 
-const columns = ["tipo", "titulo", "slug_novo", "url_legada", "redirect_301", "situacao", "orgao", "uf", "publicacoes", "documentos_externos", "links_servico", "atualizado_em", "qualidade"];
+const columns = [
+  "tipo",
+  "titulo",
+  "slug_novo",
+  "url_legada",
+  "redirect_301",
+  "situacao",
+  "orgao",
+  "uf",
+  "publicacoes",
+  "documentos_externos",
+  "links_servico",
+  "atualizado_em",
+  "qualidade",
+];
 const outDir = resolve(import.meta.dirname, "../../../docs/migration");
 mkdirSync(outDir, { recursive: true });
 writeFileSync(resolve(outDir, "content-inventory.csv"), `${csv(rows, columns)}\n`, "utf8");

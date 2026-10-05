@@ -14,12 +14,7 @@ export type ContestKind =
 
 /** Situação pública do certame — estado de domínio, não string solta (regra 6.3). */
 export type ContestPublicStatus =
-  | "PREVISTO"
-  | "INSCRICOES_ABERTAS"
-  | "EM_ANDAMENTO"
-  | "HOMOLOGADO"
-  | "ENCERRADO"
-  | "SUSPENSO";
+  "PREVISTO" | "INSCRICOES_ABERTAS" | "EM_ANDAMENTO" | "HOMOLOGADO" | "ENCERRADO" | "SUSPENSO";
 
 export type ContestArea =
   | "SEGURANCA"
@@ -34,8 +29,33 @@ export type ContestArea =
 export type EducationLevel = "FUNDAMENTAL" | "MEDIO" | "TECNICO" | "SUPERIOR";
 
 export type UF =
-  | "AC" | "AL" | "AP" | "AM" | "BA" | "CE" | "DF" | "ES" | "GO" | "MA" | "MT" | "MS" | "MG"
-  | "PA" | "PB" | "PR" | "PE" | "PI" | "RJ" | "RN" | "RS" | "RO" | "RR" | "SC" | "SP" | "SE" | "TO";
+  | "AC"
+  | "AL"
+  | "AP"
+  | "AM"
+  | "BA"
+  | "CE"
+  | "DF"
+  | "ES"
+  | "GO"
+  | "MA"
+  | "MT"
+  | "MS"
+  | "MG"
+  | "PA"
+  | "PB"
+  | "PR"
+  | "PE"
+  | "PI"
+  | "RJ"
+  | "RN"
+  | "RS"
+  | "RO"
+  | "RR"
+  | "SC"
+  | "SP"
+  | "SE"
+  | "TO";
 
 export interface ContestOrganization {
   name: string;
@@ -93,7 +113,14 @@ export interface ContestFaq {
 }
 
 export interface ContestServiceLink {
-  key: "INSCRICAO" | "AREA_DO_CANDIDATO" | "BOLETO" | "LOCAL_DE_PROVA" | "RECURSO" | "RESULTADO" | "LEGADO";
+  key:
+    | "INSCRICAO"
+    | "AREA_DO_CANDIDATO"
+    | "BOLETO"
+    | "LOCAL_DE_PROVA"
+    | "RECURSO"
+    | "RESULTADO"
+    | "LEGADO";
   label: string;
   url: string;
   external: true;

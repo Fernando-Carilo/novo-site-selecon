@@ -24,7 +24,8 @@ export const NEWS: NewsPost[] = [
   },
   {
     slug: "abertas-inscricoes-guarda-municipal-sao-goncalo-2026",
-    title: "Guarda Municipal de São Gonçalo: inscrições abertas para 100 vagas e 500 de cadastro de reserva",
+    title:
+      "Guarda Municipal de São Gonçalo: inscrições abertas para 100 vagas e 500 de cadastro de reserva",
     excerpt:
       "Candidatos de nível médio podem se inscrever até 18 de novembro. Prova objetiva será aplicada em 24 de janeiro de 2027.",
     publishedAt: "2026-09-28",
@@ -100,7 +101,8 @@ export const NEWS: NewsPost[] = [
   },
   {
     slug: "caceres-abre-selecao-para-agentes-de-saude-e-endemias",
-    title: "Cáceres abre processo seletivo público para agentes comunitários de saúde e de combate às endemias",
+    title:
+      "Cáceres abre processo seletivo público para agentes comunitários de saúde e de combate às endemias",
     excerpt:
       "São 71 vagas para ACS e 10 para ACE, além de cadastro de reserva, com remuneração inicial de R$ 3.242,00.",
     publishedAt: "2026-08-01",

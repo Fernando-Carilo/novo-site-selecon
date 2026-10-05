@@ -20,8 +20,10 @@ function deadlineText(contest: Contest): string {
     return `Inscrições até ${formatDate(contest.registration.closesAt)}`;
   }
   if (contest.status === "PREVISTO") return "Edital em elaboração — ative os alertas";
-  if (contest.examDate && contest.status === "EM_ANDAMENTO") return `Prova em ${formatDate(contest.examDate)}`;
-  if (contest.registration.closesAt) return `Inscrições encerradas em ${formatDate(contest.registration.closesAt)}`;
+  if (contest.examDate && contest.status === "EM_ANDAMENTO")
+    return `Prova em ${formatDate(contest.examDate)}`;
+  if (contest.registration.closesAt)
+    return `Inscrições encerradas em ${formatDate(contest.registration.closesAt)}`;
   return CONTEST_KIND_LABEL[contest.kind];
 }
 
@@ -57,8 +59,10 @@ export function FeaturedHero({ contests, intervalMs = 8000 }: FeaturedHeroProps)
 
   const onTabKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>, current: number) => {
     let next: number | null = null;
-    if (event.key === "ArrowDown" || event.key === "ArrowRight") next = (current + 1) % contests.length;
-    if (event.key === "ArrowUp" || event.key === "ArrowLeft") next = (current - 1 + contests.length) % contests.length;
+    if (event.key === "ArrowDown" || event.key === "ArrowRight")
+      next = (current + 1) % contests.length;
+    if (event.key === "ArrowUp" || event.key === "ArrowLeft")
+      next = (current - 1 + contests.length) % contests.length;
     if (event.key === "Home") next = 0;
     if (event.key === "End") next = contests.length - 1;
     if (next === null) return;
@@ -81,7 +85,7 @@ export function FeaturedHero({ contests, intervalMs = 8000 }: FeaturedHeroProps)
         role="tabpanel"
         id={`${baseId}-panel`}
         aria-labelledby={`${baseId}-tab-${index}`}
-        className="relative min-h-[26rem] overflow-hidden rounded-xl shadow-high lg:min-h-[30rem]"
+        className="shadow-high relative min-h-[26rem] overflow-hidden rounded-xl lg:min-h-[30rem]"
       >
         <ContestCover
           cover={active.cover}
@@ -94,7 +98,7 @@ export function FeaturedHero({ contests, intervalMs = 8000 }: FeaturedHeroProps)
         />
         <div
           aria-hidden="true"
-          className="absolute inset-0 bg-gradient-to-t from-navy-primary via-navy-primary/70 to-navy-primary/10"
+          className="from-navy-primary via-navy-primary/70 to-navy-primary/10 absolute inset-0 bg-gradient-to-t"
         />
         <div className="relative flex h-full flex-col justify-end p-6 sm:p-8 lg:p-10">
           <div className="flex flex-wrap items-center gap-2">
@@ -103,11 +107,13 @@ export function FeaturedHero({ contests, intervalMs = 8000 }: FeaturedHeroProps)
               {active.organization.uf} · {CONTEST_KIND_LABEL[active.kind]}
             </span>
           </div>
-          <p className="mt-4 text-sm font-semibold text-support-cyan">{active.organization.name}</p>
+          <p className="text-support-cyan mt-4 text-sm font-semibold">{active.organization.name}</p>
           <h2 className="mt-1 max-w-2xl text-2xl font-bold leading-tight text-white sm:text-3xl lg:text-4xl">
             {active.title}
           </h2>
-          <p className="mt-3 max-w-2xl text-sm leading-relaxed text-white/85 sm:text-base">{active.summary}</p>
+          <p className="mt-3 max-w-2xl text-sm leading-relaxed text-white/85 sm:text-base">
+            {active.summary}
+          </p>
           <ul className="mt-4 flex flex-wrap gap-2" aria-label="Destaques do concurso">
             {active.highlights.map((item) => (
               <li
@@ -119,7 +125,10 @@ export function FeaturedHero({ contests, intervalMs = 8000 }: FeaturedHeroProps)
             ))}
           </ul>
           <div className="mt-6 flex flex-wrap items-center gap-3">
-            <Link href={`/concursos/${active.slug}`} className={buttonClassNames("inverse", "", "lg")}>
+            <Link
+              href={`/concursos/${active.slug}`}
+              className={buttonClassNames("inverse", "", "lg")}
+            >
               Ver página do edital
               <Icon name="arrow-right" size={18} />
             </Link>
@@ -144,7 +153,9 @@ export function FeaturedHero({ contests, intervalMs = 8000 }: FeaturedHeroProps)
 
       <div className="flex flex-col">
         <div className="mb-2 flex items-center justify-between px-1">
-          <p className="text-sm font-semibold uppercase tracking-wide text-support-cyan">Concursos em destaque</p>
+          <p className="text-support-cyan text-sm font-semibold uppercase tracking-wide">
+            Concursos em destaque
+          </p>
           {contests.length > 1 && !reducedMotion ? (
             <button
               type="button"
@@ -156,7 +167,12 @@ export function FeaturedHero({ contests, intervalMs = 8000 }: FeaturedHeroProps)
             </button>
           ) : null}
         </div>
-        <div role="tablist" aria-orientation="vertical" aria-label="Escolher concurso em destaque" className="grid gap-2">
+        <div
+          role="tablist"
+          aria-orientation="vertical"
+          aria-label="Escolher concurso em destaque"
+          className="grid gap-2"
+        >
           {contests.map((contest, i) => {
             const selected = i === index;
             return (
@@ -175,7 +191,7 @@ export function FeaturedHero({ contests, intervalMs = 8000 }: FeaturedHeroProps)
                 className={[
                   "flex min-h-14 w-full items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors",
                   selected
-                    ? "border-support-cyan bg-white text-navy-primary shadow-medium"
+                    ? "border-support-cyan text-navy-primary shadow-medium bg-white"
                     : "border-white/15 bg-white/5 text-white hover:bg-white/10",
                 ].join(" ")}
               >
@@ -184,8 +200,12 @@ export function FeaturedHero({ contests, intervalMs = 8000 }: FeaturedHeroProps)
                   className={`h-10 w-1 shrink-0 rounded-full ${selected ? "bg-support-cyan" : "bg-white/20"}`}
                 />
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-bold">{contest.organization.shortName}</span>
-                  <span className={`block truncate text-xs ${selected ? "text-text-secondary" : "text-white/70"}`}>
+                  <span className="block truncate text-sm font-bold">
+                    {contest.organization.shortName}
+                  </span>
+                  <span
+                    className={`block truncate text-xs ${selected ? "text-text-secondary" : "text-white/70"}`}
+                  >
                     {contest.highlights[0]} · {deadlineText(contest)}
                   </span>
                 </span>

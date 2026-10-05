@@ -1,6 +1,14 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { Card, Container, Icon, SectionHeading, Stat, buttonClassNames, type IconName } from "@selecon/ui";
+import {
+  Card,
+  Container,
+  Icon,
+  SectionHeading,
+  Stat,
+  buttonClassNames,
+  type IconName,
+} from "@selecon/ui";
 import { ContestCard } from "@/components/contests/ContestCard";
 import { AlertsForm } from "@/components/home/AlertsForm";
 import { ContestSearchForm } from "@/components/home/ContestSearchForm";
@@ -17,7 +25,13 @@ export const metadata: Metadata = {
   alternates: { canonical: "/" },
 };
 
-const SHORTCUTS: { href: string; label: string; description: string; icon: IconName; tone: "blue" | "cyan" | "red" | "navy" }[] = [
+const SHORTCUTS: {
+  href: string;
+  label: string;
+  description: string;
+  icon: IconName;
+  tone: "blue" | "cyan" | "red" | "navy";
+}[] = [
   {
     href: "/concursos",
     label: "Encontrar concurso",
@@ -56,10 +70,34 @@ const SHORTCUT_TONE = {
 } as const;
 
 const JOURNEY: { step: string; title: string; description: string; icon: IconName }[] = [
-  { step: "1", title: "Encontre o edital", description: "Pesquise por órgão, cargo ou cidade e leia a página do edital, com cronograma, cargos e documentos vigentes.", icon: "search" },
-  { step: "2", title: "Inscreva-se", description: "Faça a inscrição on-line, pague a taxa ou solicite isenção dentro do prazo e guarde o comprovante.", icon: "list-checks" },
-  { step: "3", title: "Acompanhe cada fase", description: "Cartão de confirmação, local de prova, gabaritos, recursos e resultados ficam na Área do Candidato.", icon: "bell" },
-  { step: "4", title: "Conte com o atendimento", description: "Dúvidas são respondidas com protocolo pelo Fale Conosco; irregularidades vão ao canal de denúncias.", icon: "headset" },
+  {
+    step: "1",
+    title: "Encontre o edital",
+    description:
+      "Pesquise por órgão, cargo ou cidade e leia a página do edital, com cronograma, cargos e documentos vigentes.",
+    icon: "search",
+  },
+  {
+    step: "2",
+    title: "Inscreva-se",
+    description:
+      "Faça a inscrição on-line, pague a taxa ou solicite isenção dentro do prazo e guarde o comprovante.",
+    icon: "list-checks",
+  },
+  {
+    step: "3",
+    title: "Acompanhe cada fase",
+    description:
+      "Cartão de confirmação, local de prova, gabaritos, recursos e resultados ficam na Área do Candidato.",
+    icon: "bell",
+  },
+  {
+    step: "4",
+    title: "Conte com o atendimento",
+    description:
+      "Dúvidas são respondidas com protocolo pelo Fale Conosco; irregularidades vão ao canal de denúncias.",
+    icon: "headset",
+  },
 ];
 
 export default async function HomePage() {
@@ -86,18 +124,24 @@ export default async function HomePage() {
   return (
     <>
       {/* 1. Hero institucional com concursos em destaque e busca */}
-      <section className="bg-navy-primary pb-10 pt-8 text-white sm:pt-12" aria-labelledby="hero-title">
+      <section
+        className="bg-navy-primary pb-10 pt-8 text-white sm:pt-12"
+        aria-labelledby="hero-title"
+      >
         <Container>
           <div className="mb-8 max-w-3xl">
-            <p className="text-sm font-semibold uppercase tracking-wide text-support-cyan">
+            <p className="text-support-cyan text-sm font-semibold uppercase tracking-wide">
               Instituto Nacional de Seleções e Concursos
             </p>
-            <h1 id="hero-title" className="mt-2 text-3xl font-bold leading-tight sm:text-4xl lg:text-5xl">
+            <h1
+              id="hero-title"
+              className="mt-2 text-3xl font-bold leading-tight sm:text-4xl lg:text-5xl"
+            >
               Concursos públicos com segurança, transparência e isonomia
             </h1>
             <p className="mt-3 max-w-2xl text-base text-white/80 sm:text-lg">
-              Mais de 1,8 milhão de candidatos já se inscreveram em certames conduzidos pelo Instituto.
-              Encontre seu edital, inscreva-se e acompanhe cada etapa em um único lugar.
+              Mais de 1,8 milhão de candidatos já se inscreveram em certames conduzidos pelo
+              Instituto. Encontre seu edital, inscreva-se e acompanhe cada etapa em um único lugar.
             </p>
           </div>
           <FeaturedHero contests={featured} />
@@ -118,16 +162,20 @@ export default async function HomePage() {
               <li key={shortcut.href}>
                 <Link
                   href={shortcut.href}
-                  className="group flex h-full gap-4 rounded-lg border border-border bg-surface p-5 shadow-medium transition-shadow hover:shadow-high focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-action-blue"
+                  className="border-border bg-surface shadow-medium hover:shadow-high focus-visible:ring-action-blue group flex h-full gap-4 rounded-lg border p-5 transition-shadow focus-visible:outline-none focus-visible:ring-[3px]"
                 >
-                  <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-lg ${SHORTCUT_TONE[shortcut.tone]}`}>
+                  <span
+                    className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-lg ${SHORTCUT_TONE[shortcut.tone]}`}
+                  >
                     <Icon name={shortcut.icon} size={24} />
                   </span>
                   <span>
-                    <span className="block text-base font-bold text-navy-primary group-hover:text-action-blue">
+                    <span className="text-navy-primary group-hover:text-action-blue block text-base font-bold">
                       {shortcut.label}
                     </span>
-                    <span className="mt-1 block text-sm leading-relaxed text-text-secondary">{shortcut.description}</span>
+                    <span className="text-text-secondary mt-1 block text-sm leading-relaxed">
+                      {shortcut.description}
+                    </span>
                   </span>
                 </Link>
               </li>
@@ -142,7 +190,9 @@ export default async function HomePage() {
           <SectionHeading
             id="abertos-title"
             eyebrow="Inscrições"
-            title={open.length > 0 ? "Inscrições abertas e editais previstos" : "Concursos em destaque"}
+            title={
+              open.length > 0 ? "Inscrições abertas e editais previstos" : "Concursos em destaque"
+            }
             description="Prazos, vagas, escolaridade e salário em cada card. Abra a página do edital para o cronograma completo e os documentos vigentes."
             action={
               <Link href="/concursos?status=ABERTOS" className={buttonClassNames("secondary")}>
@@ -171,22 +221,25 @@ export default async function HomePage() {
               title="Últimas publicações"
               description="Editais, retificações, gabaritos, convocações e resultados, em ordem de publicação."
             />
-            <ol className="mt-6 divide-y divide-border rounded-lg border border-border">
+            <ol className="divide-border border-border mt-6 divide-y rounded-lg border">
               {publications.map((publication) => (
-                <li key={`${publication.contestSlug}-${publication.title}`} className="flex gap-4 p-4">
+                <li
+                  key={`${publication.contestSlug}-${publication.title}`}
+                  className="flex gap-4 p-4"
+                >
                   <time
                     dateTime={publication.publishedAt}
-                    className="w-24 shrink-0 text-sm font-semibold tabular-nums text-text-secondary"
+                    className="text-text-secondary w-24 shrink-0 text-sm font-semibold tabular-nums"
                   >
                     {formatDate(publication.publishedAt)}
                   </time>
                   <div className="min-w-0">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-action-blue">
+                    <p className="text-action-blue text-xs font-semibold uppercase tracking-wide">
                       {PUBLICATION_KIND_LABEL[publication.kind]} · {publication.organization}
                     </p>
                     <Link
                       href={`/concursos/${publication.contestSlug}#publicacoes`}
-                      className="mt-0.5 block text-base font-semibold text-navy-primary underline-offset-4 hover:text-action-blue hover:underline"
+                      className="text-navy-primary hover:text-action-blue mt-0.5 block text-base font-semibold underline-offset-4 hover:underline"
                     >
                       {publication.title}
                     </Link>
@@ -195,11 +248,16 @@ export default async function HomePage() {
               ))}
             </ol>
           </div>
-          <div id="alertas" className="rounded-lg border border-border bg-background-light p-6">
-            <p className="text-sm font-semibold uppercase tracking-wide text-action-blue">Alertas de editais</p>
-            <h3 className="mt-1 text-xl font-bold text-navy-primary">Receba novos editais por e-mail</h3>
-            <p className="mt-2 text-sm text-text-secondary">
-              Avisamos quando um edital é publicado ou retificado. Sem spam: apenas publicações oficiais.
+          <div id="alertas" className="border-border bg-background-light rounded-lg border p-6">
+            <p className="text-action-blue text-sm font-semibold uppercase tracking-wide">
+              Alertas de editais
+            </p>
+            <h3 className="text-navy-primary mt-1 text-xl font-bold">
+              Receba novos editais por e-mail
+            </h3>
+            <p className="text-text-secondary mt-2 text-sm">
+              Avisamos quando um edital é publicado ou retificado. Sem spam: apenas publicações
+              oficiais.
             </p>
             <div className="mt-5">
               <AlertsForm />
@@ -220,13 +278,18 @@ export default async function HomePage() {
           />
           <ol className="mt-10 grid gap-6 md:grid-cols-2 lg:grid-cols-4">
             {JOURNEY.map((item) => (
-              <li key={item.step} className="relative rounded-lg border border-border bg-surface p-6">
-                <span className="absolute -top-4 left-6 flex h-8 w-8 items-center justify-center rounded-full bg-action-blue text-sm font-bold text-white">
+              <li
+                key={item.step}
+                className="border-border bg-surface relative rounded-lg border p-6"
+              >
+                <span className="bg-action-blue absolute -top-4 left-6 flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold text-white">
                   {item.step}
                 </span>
-                <Icon name={item.icon} size={28} className="mt-2 text-action-blue" />
-                <h3 className="mt-4 text-lg font-bold text-navy-primary">{item.title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-text-secondary">{item.description}</p>
+                <Icon name={item.icon} size={28} className="text-action-blue mt-2" />
+                <h3 className="text-navy-primary mt-4 text-lg font-bold">{item.title}</h3>
+                <p className="text-text-secondary mt-2 text-sm leading-relaxed">
+                  {item.description}
+                </p>
               </li>
             ))}
           </ol>
@@ -247,7 +310,13 @@ export default async function HomePage() {
               />
               <div className="mt-8 grid grid-cols-2 gap-6">
                 {KEY_NUMBERS.map((number) => (
-                  <Stat key={number.label} value={number.value} label={number.label} caption={number.caption} tone="inverse" />
+                  <Stat
+                    key={number.label}
+                    value={number.value}
+                    label={number.label}
+                    caption={number.caption}
+                    tone="inverse"
+                  />
                 ))}
               </div>
               <div className="mt-8 flex flex-wrap gap-3">
@@ -261,10 +330,15 @@ export default async function HomePage() {
             </div>
             <ul className="grid gap-4 sm:grid-cols-2">
               {CAPABILITIES.slice(0, 6).map((capability) => (
-                <li key={capability.title} className="rounded-lg border border-white/15 bg-white/5 p-5">
+                <li
+                  key={capability.title}
+                  className="rounded-lg border border-white/15 bg-white/5 p-5"
+                >
                   <Icon name={capability.icon} size={24} className="text-support-cyan" />
                   <h3 className="mt-3 text-base font-bold">{capability.title}</h3>
-                  <p className="mt-1.5 text-sm leading-relaxed text-white/75">{capability.description}</p>
+                  <p className="mt-1.5 text-sm leading-relaxed text-white/75">
+                    {capability.description}
+                  </p>
                 </li>
               ))}
             </ul>
@@ -277,16 +351,27 @@ export default async function HomePage() {
         <Container>
           <Card padding="lg" className="grid gap-8 lg:grid-cols-[1.4fr_1fr] lg:items-center">
             <div>
-              <p className="text-sm font-semibold uppercase tracking-wide text-action-blue">Para órgãos públicos e instituições</p>
-              <h2 id="comercial-title" className="mt-1 text-2xl font-bold text-navy-primary sm:text-3xl">
+              <p className="text-action-blue text-sm font-semibold uppercase tracking-wide">
+                Para órgãos públicos e instituições
+              </p>
+              <h2
+                id="comercial-title"
+                className="text-navy-primary mt-1 text-2xl font-bold sm:text-3xl"
+              >
                 Precisa realizar um concurso ou processo seletivo?
               </h2>
-              <p className="mt-3 text-base text-text-secondary">
-                Entidade sem fins lucrativos, contratável por dispensa de licitação (Lei nº 14.133/2021). Envie
-                sua demanda e receba uma proposta técnica dimensionada para o seu certame.
+              <p className="text-text-secondary mt-3 text-base">
+                Entidade sem fins lucrativos, contratável por dispensa de licitação (Lei nº
+                14.133/2021). Envie sua demanda e receba uma proposta técnica dimensionada para o
+                seu certame.
               </p>
-              <ul className="mt-5 grid gap-2 text-sm text-text-primary sm:grid-cols-2">
-                {["Concursos públicos", "Processos seletivos simplificados", "Seleções escolares e vestibulares", "Cursos de formação e capacitação"].map((item) => (
+              <ul className="text-text-primary mt-5 grid gap-2 text-sm sm:grid-cols-2">
+                {[
+                  "Concursos públicos",
+                  "Processos seletivos simplificados",
+                  "Seleções escolares e vestibulares",
+                  "Cursos de formação e capacitação",
+                ].map((item) => (
                   <li key={item} className="flex items-center gap-2">
                     <Icon name="check-circle" size={18} className="text-success-green" />
                     {item}
@@ -325,17 +410,28 @@ export default async function HomePage() {
             {news.map((post) => (
               <li key={post.slug}>
                 <Card as="article" interactive className="relative flex h-full flex-col">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-action-blue">
-                    {post.category === "CONCURSOS" ? "Concursos" : post.category === "RESULTADOS" ? "Resultados" : post.category === "INSTITUCIONAL" ? "Institucional" : "Comunicados"}
+                  <p className="text-action-blue text-xs font-semibold uppercase tracking-wide">
+                    {post.category === "CONCURSOS"
+                      ? "Concursos"
+                      : post.category === "RESULTADOS"
+                        ? "Resultados"
+                        : post.category === "INSTITUCIONAL"
+                          ? "Institucional"
+                          : "Comunicados"}
                     {" · "}
                     <time dateTime={post.publishedAt}>{formatDate(post.publishedAt)}</time>
                   </p>
-                  <h3 className="mt-2 text-lg font-bold leading-snug text-navy-primary">
-                    <Link href={`/noticias/${post.slug}`} className="after:absolute after:inset-0 after:content-[''] focus-visible:outline-none">
+                  <h3 className="text-navy-primary mt-2 text-lg font-bold leading-snug">
+                    <Link
+                      href={`/noticias/${post.slug}`}
+                      className="after:absolute after:inset-0 after:content-[''] focus-visible:outline-none"
+                    >
                       {post.title}
                     </Link>
                   </h3>
-                  <p className="mt-2 line-clamp-3 text-sm leading-relaxed text-text-secondary">{post.excerpt}</p>
+                  <p className="text-text-secondary mt-2 line-clamp-3 text-sm leading-relaxed">
+                    {post.excerpt}
+                  </p>
                 </Card>
               </li>
             ))}
@@ -354,18 +450,26 @@ export default async function HomePage() {
           />
           <ul className="mt-8 flex flex-wrap gap-2" aria-label="Clientes e parceiros">
             {CLIENTS.map((client) => (
-              <li key={client} className="rounded-full border border-border bg-surface px-3.5 py-1.5 text-sm font-medium text-navy-primary">
+              <li
+                key={client}
+                className="border-border bg-surface text-navy-primary rounded-full border px-3.5 py-1.5 text-sm font-medium"
+              >
                 {client}
               </li>
             ))}
           </ul>
           <ul className="mt-8 grid gap-4 md:grid-cols-2">
             {RECOGNITIONS.map((item) => (
-              <li key={item.title} className="flex gap-4 rounded-lg border border-border bg-surface p-5">
-                <Icon name="award" size={28} className="shrink-0 text-action-blue" />
+              <li
+                key={item.title}
+                className="border-border bg-surface flex gap-4 rounded-lg border p-5"
+              >
+                <Icon name="award" size={28} className="text-action-blue shrink-0" />
                 <div>
-                  <h3 className="text-base font-bold text-navy-primary">{item.title}</h3>
-                  <p className="mt-1 text-sm leading-relaxed text-text-secondary">{item.description}</p>
+                  <h3 className="text-navy-primary text-base font-bold">{item.title}</h3>
+                  <p className="text-text-secondary mt-1 text-sm leading-relaxed">
+                    {item.description}
+                  </p>
                 </div>
               </li>
             ))}

@@ -33,7 +33,12 @@ export function ContestCard({ contest, headingLevel: Heading = "h3" }: ContestCa
   const levels = contest.educationLevels.map((level) => EDUCATION_LEVEL_LABEL[level]).join(", ");
 
   return (
-    <Card as="article" padding="none" interactive className="relative flex h-full flex-col overflow-hidden">
+    <Card
+      as="article"
+      padding="none"
+      interactive
+      className="relative flex h-full flex-col overflow-hidden"
+    >
       <ContestCover
         cover={contest.cover}
         label={contest.organization.shortName}
@@ -43,11 +48,11 @@ export function ContestCard({ contest, headingLevel: Heading = "h3" }: ContestCa
       <div className="flex flex-1 flex-col p-5">
         <div className="flex flex-wrap items-center gap-2">
           <StatusBadge status={contest.status} />
-          <span className="text-xs font-semibold uppercase tracking-wide text-text-secondary">
+          <span className="text-text-secondary text-xs font-semibold uppercase tracking-wide">
             {CONTEST_KIND_LABEL[contest.kind]}
           </span>
         </div>
-        <Heading className="mt-3 text-lg font-bold leading-snug text-navy-primary">
+        <Heading className="text-navy-primary mt-3 text-lg font-bold leading-snug">
           <Link
             href={`/concursos/${contest.slug}`}
             className="after:absolute after:inset-0 after:content-[''] focus-visible:outline-none"
@@ -55,40 +60,54 @@ export function ContestCard({ contest, headingLevel: Heading = "h3" }: ContestCa
             {contest.title}
           </Link>
         </Heading>
-        <p className="mt-1 text-sm text-text-secondary">{contest.editalNumber}</p>
-        <p className="mt-3 line-clamp-3 text-sm leading-relaxed text-text-primary">{contest.summary}</p>
+        <p className="text-text-secondary mt-1 text-sm">{contest.editalNumber}</p>
+        <p className="text-text-primary mt-3 line-clamp-3 text-sm leading-relaxed">
+          {contest.summary}
+        </p>
         <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
           <div>
-            <dt className="text-xs font-semibold uppercase tracking-wide text-text-secondary">Vagas</dt>
-            <dd className="font-semibold tabular-nums text-navy-primary">
-              {contest.vacancies === null ? "Cadastro de reserva" : formatInteger(contest.vacancies)}
+            <dt className="text-text-secondary text-xs font-semibold uppercase tracking-wide">
+              Vagas
+            </dt>
+            <dd className="text-navy-primary font-semibold tabular-nums">
+              {contest.vacancies === null
+                ? "Cadastro de reserva"
+                : formatInteger(contest.vacancies)}
               {contest.reserveVacancies ? ` + ${formatInteger(contest.reserveVacancies)} CR` : ""}
             </dd>
           </div>
           <div>
-            <dt className="text-xs font-semibold uppercase tracking-wide text-text-secondary">Escolaridade</dt>
-            <dd className="font-semibold text-navy-primary">{levels}</dd>
+            <dt className="text-text-secondary text-xs font-semibold uppercase tracking-wide">
+              Escolaridade
+            </dt>
+            <dd className="text-navy-primary font-semibold">{levels}</dd>
           </div>
           {contest.salaryMaxCents ? (
             <div>
-              <dt className="text-xs font-semibold uppercase tracking-wide text-text-secondary">Salário até</dt>
-              <dd className="font-semibold tabular-nums text-navy-primary">{formatCurrency(contest.salaryMaxCents)}</dd>
+              <dt className="text-text-secondary text-xs font-semibold uppercase tracking-wide">
+                Salário até
+              </dt>
+              <dd className="text-navy-primary font-semibold tabular-nums">
+                {formatCurrency(contest.salaryMaxCents)}
+              </dd>
             </div>
           ) : null}
           <div>
-            <dt className="text-xs font-semibold uppercase tracking-wide text-text-secondary">Local</dt>
-            <dd className="font-semibold text-navy-primary">
+            <dt className="text-text-secondary text-xs font-semibold uppercase tracking-wide">
+              Local
+            </dt>
+            <dd className="text-navy-primary font-semibold">
               {contest.organization.city}/{contest.organization.uf}
             </dd>
           </div>
         </dl>
         {deadline ? (
-          <p className="mt-4 flex items-center gap-2 text-sm font-medium text-text-primary">
+          <p className="text-text-primary mt-4 flex items-center gap-2 text-sm font-medium">
             <Icon name="calendar" size={16} className="text-action-blue" />
             {deadline}
           </p>
         ) : null}
-        <p className="mt-auto pt-4 text-sm font-semibold text-action-blue">
+        <p className="text-action-blue mt-auto pt-4 text-sm font-semibold">
           Ver página do edital
           <Icon name="arrow-right" size={16} className="ml-1 inline" />
         </p>

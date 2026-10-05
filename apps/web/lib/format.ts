@@ -60,9 +60,5 @@ export function daysUntil(iso: string, now: Date = new Date()): number {
 
 /** Remove acentos e baixa caixa — tolerância a acentos na busca (seção 9.2). */
 export function normalizeText(value: string): string {
-  return value
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .toLowerCase()
-    .trim();
+  return value.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
 }

@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
+import localFont from "next/font/local";
 import type { ReactNode } from "react";
 import { SkipLink } from "@selecon/ui";
 import { SiteFooter } from "@/components/SiteFooter";
@@ -7,10 +7,15 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/site";
 import "./globals.css";
 
-const inter = Inter({
-  subsets: ["latin"],
+/** Inter variável vendorizada (ver app/fonts/README.md) — sem rede no build nem terceiros em produção. */
+const inter = localFont({
+  src: [
+    { path: "./fonts/inter-latin-variable.woff2", weight: "400 800", style: "normal" },
+    { path: "./fonts/inter-latin-ext-variable.woff2", weight: "400 800", style: "normal" },
+  ],
   display: "swap",
   variable: "--font-inter",
+  fallback: ["Public Sans", "system-ui", "-apple-system", "Segoe UI", "sans-serif"],
 });
 
 export const metadata: Metadata = {

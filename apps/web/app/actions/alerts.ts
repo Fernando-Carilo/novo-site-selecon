@@ -37,7 +37,8 @@ export async function subscribeAlertsAction(
     return {
       status: "success",
       protocol: receipt.protocol,
-      message: "Assinatura registrada. Você receberá um e-mail de confirmação para ativar os alertas.",
+      message:
+        "Assinatura registrada. Você receberá um e-mail de confirmação para ativar os alertas.",
     };
   } catch {
     return {

@@ -10,7 +10,9 @@
   --color-action-blue-hover: #0957b4;
   --color-support-cyan: #23b5e8;
   --color-institutional-red: #d52b3f;
+  --color-institutional-red-ink: #b9253a;
   --color-success-green: #12805c;
+  --color-success-green-ink: #0f6e4f;
   --color-warning-amber: #b45309;
   --color-background-light: #f3f7fb;
   --color-surface: #ffffff;
@@ -21,13 +23,14 @@
   --color-border: #dce6f2;
   --color-border-strong: #c3d2e4;
 
-  /* "Washes" — fundos suaves para badges/alertas (sempre com texto escuro >= 4.5:1) */
+  /* "Washes" — fundos suaves para badges/alertas. Texto sobre wash usa as variantes "-ink"
+     (verificado: todos os pares >= 4.5:1, WCAG AA para texto pequeno). */
   --color-wash-blue: #e8f1fd;
   --color-wash-cyan: #e3f6fc;
   --color-wash-green: #e6f5ef;
   --color-wash-amber: #fdf3e7;
   --color-wash-red: #fdebee;
-  --color-wash-neutral: #eef2f7;
+  --color-wash-neutral: #f1f4f8;
 
   --font-family-base: "Inter", "Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
 

@@ -11,12 +11,12 @@ export interface BadgeProps {
 }
 
 const TONE_CLASSES: Record<BadgeTone, string> = {
-  open: "bg-wash-green text-success-green",
-  success: "bg-wash-green text-success-green",
+  open: "bg-wash-green text-success-green-ink",
+  success: "bg-wash-green text-success-green-ink",
   info: "bg-wash-blue text-action-blue",
   neutral: "bg-wash-neutral text-text-secondary",
   warning: "bg-wash-amber text-warning-amber",
-  danger: "bg-wash-red text-institutional-red",
+  danger: "bg-wash-red text-institutional-red-ink",
   navy: "bg-navy-primary text-white",
 };
 

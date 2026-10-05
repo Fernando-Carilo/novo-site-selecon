@@ -10,7 +10,9 @@
  *    ambientes sem saída para a internet — o relatório separa "bloqueado" de "quebrado").
  * Sai com código 1 se houver link interno quebrado ou âncora inexistente.
  */
-const base = (process.argv[2] && !process.argv[2].startsWith("--") ? process.argv[2] : "http://localhost:3000").replace(/\/$/, "");
+const base = (
+  process.argv[2] && !process.argv[2].startsWith("--") ? process.argv[2] : "http://localhost:3000"
+).replace(/\/$/, "");
 const checkExternal = process.argv.includes("--external");
 
 const visited = new Map();
@@ -25,8 +27,13 @@ function enqueue(path, from) {
 }
 
 async function fetchText(url) {
-  const response = await fetch(url, { redirect: "manual", headers: { "User-Agent": "selecon-link-check" } });
-  const body = response.headers.get("content-type")?.includes("text/html") ? await response.text() : "";
+  const response = await fetch(url, {
+    redirect: "manual",
+    headers: { "User-Agent": "selecon-link-check" },
+  });
+  const body = response.headers.get("content-type")?.includes("text/html")
+    ? await response.text()
+    : "";
   return { status: response.status, body, location: response.headers.get("location") };
 }
 
@@ -59,7 +66,8 @@ while (queue.length) {
         anchorsToCheck.push({ page: path, target: path, hash });
         continue;
       }
-      if (raw.startsWith("mailto:") || raw.startsWith("tel:") || raw.startsWith("javascript:")) continue;
+      if (raw.startsWith("mailto:") || raw.startsWith("tel:") || raw.startsWith("javascript:"))
+        continue;
       if (raw.startsWith("http")) {
         const url = new URL(raw);
         if (url.origin === new URL(base).origin) {
@@ -81,7 +89,9 @@ while (queue.length) {
   }
 }
 
-const broken = [...visited.entries()].filter(([, v]) => typeof v.status !== "number" || v.status >= 400);
+const broken = [...visited.entries()].filter(
+  ([, v]) => typeof v.status !== "number" || v.status >= 400,
+);
 const missingAnchors = [];
 for (const { page, target, hash } of anchorsToCheck) {
   const id = decodeURIComponent(hash.slice(1));
@@ -103,7 +113,11 @@ if (checkExternal) {
   let failed = 0;
   for (const [url] of external) {
     try {
-      const r = await fetch(url, { method: "HEAD", redirect: "follow", signal: AbortSignal.timeout(15000) });
+      const r = await fetch(url, {
+        method: "HEAD",
+        redirect: "follow",
+        signal: AbortSignal.timeout(15000),
+      });
       if (r.status >= 400) {
         failed += 1;
         console.log(`  ✗ externo ${url} → ${r.status}`);

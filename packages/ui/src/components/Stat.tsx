@@ -17,11 +17,15 @@ export function Stat({ value, label, caption, tone = "default" }: StatProps) {
       >
         {value}
       </p>
-      <p className={`mt-1 text-sm font-semibold ${inverse ? "text-support-cyan" : "text-action-blue"}`}>
+      <p
+        className={`mt-1 text-sm font-semibold ${inverse ? "text-support-cyan" : "text-action-blue"}`}
+      >
         {label}
       </p>
       {caption ? (
-        <p className={`mt-1 text-sm ${inverse ? "text-white/70" : "text-text-secondary"}`}>{caption}</p>
+        <p className={`mt-1 text-sm ${inverse ? "text-white/70" : "text-text-secondary"}`}>
+          {caption}
+        </p>
       ) : null}
     </div>
   );

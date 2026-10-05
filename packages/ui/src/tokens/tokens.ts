@@ -10,7 +10,11 @@ export const colorTokens = {
   actionBlueHover: "#0957B4",
   supportCyan: "#23B5E8",
   institutionalRed: "#D52B3F",
+  /** Texto vermelho sobre `washRed` (>= 4.5:1). */
+  institutionalRedInk: "#B9253A",
   successGreen: "#12805C",
+  /** Texto verde sobre `washGreen` (>= 4.5:1). */
+  successGreenInk: "#0F6E4F",
   warningAmber: "#B45309",
   backgroundLight: "#F3F7FB",
   surface: "#FFFFFF",
@@ -25,7 +29,7 @@ export const colorTokens = {
   washGreen: "#E6F5EF",
   washAmber: "#FDF3E7",
   washRed: "#FDEBEE",
-  washNeutral: "#EEF2F7",
+  washNeutral: "#F1F4F8",
 } as const;
 
 export const typographyTokens = {

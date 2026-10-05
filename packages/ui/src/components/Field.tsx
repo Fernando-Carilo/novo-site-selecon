@@ -24,25 +24,33 @@ function describedBy(id: string, hint?: string, error?: string) {
 }
 
 /** Rótulo, dica e mensagem de erro sempre associados ao controle (seção 5.4). */
-export function FieldShell({ id, label, hint, error, required, children, className = "" }: FieldShellProps) {
+export function FieldShell({
+  id,
+  label,
+  hint,
+  error,
+  required,
+  children,
+  className = "",
+}: FieldShellProps) {
   return (
     <div className={className}>
-      <label htmlFor={id} className="mb-1.5 block text-sm font-semibold text-navy-primary">
+      <label htmlFor={id} className="text-navy-primary mb-1.5 block text-sm font-semibold">
         {label}
         {required ? (
-          <span className="ml-1 text-institutional-red" aria-hidden="true">
+          <span className="text-institutional-red ml-1" aria-hidden="true">
             *
           </span>
         ) : null}
       </label>
       {hint ? (
-        <p id={`${id}-hint`} className="mb-1.5 text-sm text-text-secondary">
+        <p id={`${id}-hint`} className="text-text-secondary mb-1.5 text-sm">
           {hint}
         </p>
       ) : null}
       {children}
       {error ? (
-        <p id={`${id}-error`} className="mt-1.5 text-sm font-medium text-institutional-red">
+        <p id={`${id}-error`} className="text-institutional-red mt-1.5 text-sm font-medium">
           {error}
         </p>
       ) : null}
@@ -58,9 +66,25 @@ export interface InputFieldProps extends InputHTMLAttributes<HTMLInputElement> {
   wrapperClassName?: string;
 }
 
-export function InputField({ id, label, hint, error, required, wrapperClassName, className = "", ...props }: InputFieldProps) {
+export function InputField({
+  id,
+  label,
+  hint,
+  error,
+  required,
+  wrapperClassName,
+  className = "",
+  ...props
+}: InputFieldProps) {
   return (
-    <FieldShell id={id} label={label} hint={hint} error={error} required={required} className={wrapperClassName}>
+    <FieldShell
+      id={id}
+      label={label}
+      hint={hint}
+      error={error}
+      required={required}
+      className={wrapperClassName}
+    >
       <input
         id={id}
         name={props.name ?? id}
@@ -84,9 +108,27 @@ export interface SelectFieldProps extends SelectHTMLAttributes<HTMLSelectElement
   placeholder?: string;
 }
 
-export function SelectField({ id, label, hint, error, required, wrapperClassName, className = "", options, placeholder, ...props }: SelectFieldProps) {
+export function SelectField({
+  id,
+  label,
+  hint,
+  error,
+  required,
+  wrapperClassName,
+  className = "",
+  options,
+  placeholder,
+  ...props
+}: SelectFieldProps) {
   return (
-    <FieldShell id={id} label={label} hint={hint} error={error} required={required} className={wrapperClassName}>
+    <FieldShell
+      id={id}
+      label={label}
+      hint={hint}
+      error={error}
+      required={required}
+      className={wrapperClassName}
+    >
       <select
         id={id}
         name={props.name ?? id}
@@ -115,9 +157,25 @@ export interface TextareaFieldProps extends TextareaHTMLAttributes<HTMLTextAreaE
   wrapperClassName?: string;
 }
 
-export function TextareaField({ id, label, hint, error, required, wrapperClassName, className = "", ...props }: TextareaFieldProps) {
+export function TextareaField({
+  id,
+  label,
+  hint,
+  error,
+  required,
+  wrapperClassName,
+  className = "",
+  ...props
+}: TextareaFieldProps) {
   return (
-    <FieldShell id={id} label={label} hint={hint} error={error} required={required} className={wrapperClassName}>
+    <FieldShell
+      id={id}
+      label={label}
+      hint={hint}
+      error={error}
+      required={required}
+      className={wrapperClassName}
+    >
       <textarea
         id={id}
         name={props.name ?? id}
@@ -138,7 +196,15 @@ export interface CheckboxFieldProps extends InputHTMLAttributes<HTMLInputElement
   wrapperClassName?: string;
 }
 
-export function CheckboxField({ id, label, error, required, wrapperClassName = "", className = "", ...props }: CheckboxFieldProps) {
+export function CheckboxField({
+  id,
+  label,
+  error,
+  required,
+  wrapperClassName = "",
+  className = "",
+  ...props
+}: CheckboxFieldProps) {
   return (
     <div className={wrapperClassName}>
       <div className="flex items-start gap-3">
@@ -149,15 +215,15 @@ export function CheckboxField({ id, label, error, required, wrapperClassName = "
           required={required}
           aria-invalid={error ? true : undefined}
           aria-describedby={error ? `${id}-error` : undefined}
-          className={`mt-1 h-5 w-5 shrink-0 rounded-sm border-border-strong text-action-blue focus:ring-[3px] focus:ring-action-blue/40 ${className}`}
+          className={`border-border-strong text-action-blue focus:ring-action-blue/40 mt-1 h-5 w-5 shrink-0 rounded-sm focus:ring-[3px] ${className}`}
           {...props}
         />
-        <label htmlFor={id} className="text-sm leading-relaxed text-text-primary">
+        <label htmlFor={id} className="text-text-primary text-sm leading-relaxed">
           {label}
         </label>
       </div>
       {error ? (
-        <p id={`${id}-error`} className="mt-1.5 text-sm font-medium text-institutional-red">
+        <p id={`${id}-error`} className="text-institutional-red mt-1.5 text-sm font-medium">
           {error}
         </p>
       ) : null}

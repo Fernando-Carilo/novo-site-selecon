@@ -16,7 +16,7 @@ export function BrandLogo({ variant = "light", className = "", priority = false 
   return (
     <Link
       href="/"
-      className={`inline-flex items-center rounded-md focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-action-blue ${className}`}
+      className={`focus-visible:ring-action-blue inline-flex items-center rounded-md focus-visible:outline-none focus-visible:ring-[3px] ${className}`}
       aria-label="Instituto Selecon — página inicial"
     >
       <span className={variant === "dark" ? "rounded-md bg-white px-3 py-2" : ""}>

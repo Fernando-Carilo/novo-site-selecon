@@ -69,10 +69,12 @@ function matchesQuery(contest: Contest, q?: string): boolean {
   const terms = expandQuery(q);
   // Todos os tokens da consulta original precisam aparecer (ou um sinônimo deles).
   const tokens = normalizeText(q).split(/\s+/).filter(Boolean);
-  return tokens.every((token) => {
-    if (haystack.includes(token)) return true;
-    return (SYNONYMS[token] ?? []).some((syn) => haystack.includes(normalizeText(syn)));
-  }) || terms.some((term) => haystack.includes(term));
+  return (
+    tokens.every((token) => {
+      if (haystack.includes(token)) return true;
+      return (SYNONYMS[token] ?? []).some((syn) => haystack.includes(normalizeText(syn)));
+    }) || terms.some((term) => haystack.includes(term))
+  );
 }
 
 function applyFilters(contests: Contest[], filters: ContestCatalogFilters): Contest[] {

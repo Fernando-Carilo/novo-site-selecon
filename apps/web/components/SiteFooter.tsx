@@ -15,7 +15,7 @@ export function SiteFooter() {
           </p>
           <address className="mt-5 space-y-2 text-sm not-italic text-white/90">
             <p className="flex gap-2">
-              <Icon name="map-pin" size={18} className="mt-0.5 text-support-cyan" />
+              <Icon name="map-pin" size={18} className="text-support-cyan mt-0.5" />
               <span>
                 {INSTITUTION.address.street} — {INSTITUTION.address.district}
                 <br />
@@ -23,14 +23,17 @@ export function SiteFooter() {
               </span>
             </p>
             <p className="flex gap-2">
-              <Icon name="phone" size={18} className="mt-0.5 text-support-cyan" />
+              <Icon name="phone" size={18} className="text-support-cyan mt-0.5" />
               <a href={INSTITUTION.phoneHref} className="underline-offset-4 hover:underline">
                 {INSTITUTION.phone}
               </a>
             </p>
             <p className="flex gap-2">
-              <Icon name="mail" size={18} className="mt-0.5 text-support-cyan" />
-              <a href={`mailto:${INSTITUTION.emails.faleConosco}`} className="break-all underline-offset-4 hover:underline">
+              <Icon name="mail" size={18} className="text-support-cyan mt-0.5" />
+              <a
+                href={`mailto:${INSTITUTION.emails.faleConosco}`}
+                className="break-all underline-offset-4 hover:underline"
+              >
                 {INSTITUTION.emails.faleConosco}
               </a>
             </p>
@@ -62,13 +65,15 @@ export function SiteFooter() {
         </div>
         {FOOTER_COLUMNS.map((column) => (
           <nav key={column.title} aria-label={column.title}>
-            <p className="text-sm font-bold uppercase tracking-wide text-support-cyan">{column.title}</p>
+            <p className="text-support-cyan text-sm font-bold uppercase tracking-wide">
+              {column.title}
+            </p>
             <ul className="mt-4 space-y-2.5">
               {column.links.map((link) => (
                 <li key={link.href}>
                   <Link
                     href={link.href}
-                    className="inline-block py-0.5 text-sm text-white/85 underline-offset-4 hover:text-white hover:underline focus-visible:ring-support-cyan"
+                    className="focus-visible:ring-support-cyan inline-block py-0.5 text-sm text-white/85 underline-offset-4 hover:text-white hover:underline"
                   >
                     {link.label}
                   </Link>
