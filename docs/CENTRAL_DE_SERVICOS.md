@@ -73,9 +73,25 @@ Resposta `201` com `SubmissionReceipt`:
 | Caminho | Corpo (Zod) | Fila | Origem no portal |
 | --- | --- | --- | --- |
 | `/v1/portal/commercial-leads` | `commercialLeadSchema` | `COMERCIAL` | `/comercial` |
-| `/v1/portal/tickets` | `createTicketRequestSchema` | `ATENDIMENTO` | `/fale-conosco` |
+| `/v1/portal/tickets` | `createTicketRequestSchema` (inclui `contestSlug` opcional — slug público do concurso; `subject` traz o rótulo legível do assunto) | `ATENDIMENTO` | `/fale-conosco` |
 | `/v1/portal/alert-subscriptions` | `alertSubscriptionSchema` | `ALERTAS` | home, catálogo e página do edital |
-| `GET /v1/portal/tickets/{protocol}` | — | — | consulta de protocolo em `/atendimento#protocolo` |
+| `GET /v1/portal/tickets/{protocol}` | resposta `ticketLookupResultSchema` | — | consulta de protocolo em `/atendimento#protocolo` |
+
+Consulta de protocolo — resposta `200`:
+
+```json
+{
+  "found": true,
+  "status": "IN_PROGRESS",
+  "subject": "Isenção de taxa",
+  "updatedAt": "2026-10-05T14:10:00Z",
+  "messages": [{ "at": "2026-10-05T14:03:00Z", "direction": "IN", "body": "..." }]
+}
+```
+
+`404` ou `{ "found": false, "reason": "NOT_FOUND" | "UNAVAILABLE" }` quando não localizado. As
+mensagens devem conter apenas o conteúdo do próprio chamado (nunca dados de terceiros) e a
+Central deve aplicar rate limit por IP/protocolo para evitar enumeração.
 
 Erros: `400` com `{ "errors": [{ "path": "email", "message": "..." }] }` (o portal já valida com o
 mesmo schema antes de enviar), `409` para `Idempotency-Key` repetida com corpo diferente, `429`

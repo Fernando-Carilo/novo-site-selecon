@@ -44,7 +44,11 @@ export class MockSubmissionGateway implements SubmissionGateway {
   readonly mode = "mock" as const;
 
   private receipt(prefix: string, queue: SubmissionReceipt["queue"]): SubmissionReceipt {
-    const receipt = { protocol: localProtocol(prefix), receivedAt: new Date().toISOString(), queue };
+    const receipt = {
+      protocol: localProtocol(prefix),
+      receivedAt: new Date().toISOString(),
+      queue,
+    };
     console.warn(`[submissions:mock] ${queue} recebido — protocolo ${receipt.protocol}`);
     return receipt;
   }
@@ -82,7 +86,11 @@ export class CentralSubmissionGateway implements SubmissionGateway {
     private readonly apiToken?: string,
   ) {}
 
-  private async post(path: string, body: unknown, idempotencyKey: string): Promise<SubmissionReceipt> {
+  private async post(
+    path: string,
+    body: unknown,
+    idempotencyKey: string,
+  ): Promise<SubmissionReceipt> {
     const response = await fetch(`${this.baseUrl}${path}`, {
       method: "POST",
       headers: {
@@ -101,11 +109,19 @@ export class CentralSubmissionGateway implements SubmissionGateway {
   }
 
   submitCommercialLead(lead: CommercialLead) {
-    return this.post("/v1/portal/commercial-leads", commercialLeadSchema.parse(lead), crypto.randomUUID());
+    return this.post(
+      "/v1/portal/commercial-leads",
+      commercialLeadSchema.parse(lead),
+      crypto.randomUUID(),
+    );
   }
 
   submitTicket(ticket: CreateTicketRequest) {
-    return this.post("/v1/portal/tickets", createTicketRequestSchema.parse(ticket), crypto.randomUUID());
+    return this.post(
+      "/v1/portal/tickets",
+      createTicketRequestSchema.parse(ticket),
+      crypto.randomUUID(),
+    );
   }
 
   subscribeAlerts(subscription: AlertSubscription) {

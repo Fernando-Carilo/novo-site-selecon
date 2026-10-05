@@ -9,7 +9,7 @@ describe("format", () => {
   });
 
   it("formata moeda em centavos", () => {
-    expect(formatCurrency(317296).replace(/ /g, " ")).toBe("R$ 3.172,96");
+    expect(formatCurrency(317296).replace(/\u00a0/g, " ")).toBe("R$ 3.172,96");
     expect(formatCurrency(null)).toBe("—");
   });
 

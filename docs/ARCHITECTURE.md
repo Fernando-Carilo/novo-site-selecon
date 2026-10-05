@@ -129,3 +129,30 @@ Este documento reflete a arquitetura de **fundação (Fase 0)**. Os módulos de 
 não têm implementação completa de regras de negócio — apenas a estrutura de pastas, schema de
 dados inicial e interfaces de adapter. Cada fase subsequente deve atualizar este documento com
 os diagramas e decisões específicas do módulo implementado.
+
+## Camada de conteúdo do portal público (adicionado em 2026-10-05)
+
+```text
+apps/web/lib/content/
+├─ types.ts              # modelo público (Contest, NewsPost, ServiceLine, filtros, facetas)
+├─ labels.ts             # rótulos/tons de status, tipos, áreas, escolaridade, UFs
+├─ provider.ts           # porta ContentProvider
+├─ static-provider.ts    # dataset migrado: busca (acentos/sinônimos), filtros, facetas, paginação
+├─ central-provider.ts   # Central de Serviços (HTTP + ISR); mesma lógica de filtro/ordenação
+├─ index.ts              # getContentProvider() por CONTENT_SOURCE
+└─ data/                 # contests.ts, news.ts, services.ts, institution.ts (carga inicial)
+apps/web/lib/central/submissions.ts   # SubmissionGateway (mock | Central): leads, tickets, alertas, consulta
+packages/contracts/src/central/       # contratos Zod compartilhados com a Central
+```
+
+Princípios:
+
+- **Uma única fonte de verdade por consulta**: o provider da Central reaproveita as regras do
+  provider estático, de modo que catálogo, home e sitemap nunca mostrem contagens divergentes.
+- **Sem fallback silencioso**: Central configurada e indisponível → erro explícito (o cache ISR
+  anterior continua sendo servido pelo Next.js); formulários em produção exigem a Central ou
+  `SUBMISSIONS_MODE=mock` explícito.
+- **Renderização no servidor** (RSC) para todas as páginas públicas; client components apenas
+  onde há interação (hero com tabs, menu mobile, formulários com `useActionState`).
+- **Imagens**: capa vetorial por área quando não há foto; fotos oficiais via `next/image` com
+  `remotePatterns` restritos aos domínios do Instituto/Central.

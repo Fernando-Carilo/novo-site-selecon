@@ -16,6 +16,8 @@ export const createTicketRequestSchema = z.object({
   phone: z.string().optional(),
   cpf: z.string().length(11).optional(),
   contestId: z.string().uuid().optional(),
+  /** Slug público do concurso (portal) — usado enquanto o portal não conhece o UUID da Central. */
+  contestSlug: z.string().max(120).optional(),
   subject: z.string().min(1).max(200),
   preferredChannel: ticketChannelSchema,
   description: z.string().min(1).max(5000),

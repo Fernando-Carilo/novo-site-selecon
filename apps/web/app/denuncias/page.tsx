@@ -1,10 +1,6 @@
-import { PlaceholderPage } from "../_placeholder";
+import { redirect } from "next/navigation";
 
-export default function WhistleblowingPage() {
-  return (
-    <PlaceholderPage
-      title="Canal de denúncias"
-      description="O canal segregado e seguro de denúncias (protocolo, código de acesso, anonimato) será implementado na Fase 6, após threat model e testes de abuso."
-    />
-  );
+/** Rota legada: o canal de denúncias é apresentado em /integridade. */
+export default function WhistleblowingRedirectPage() {
+  redirect("/integridade");
 }

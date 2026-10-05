@@ -42,12 +42,12 @@ Justificativas técnicas detalhadas estão registradas em `docs/DECISIONS/` (ADR
 
 | Fase | Escopo                                                              | Status                                                                                   |
 | ---- | ------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| 0    | Descoberta e fundação (monorepo, tooling, CI, docker-compose, docs) | **Em execução nesta sessão**                                                             |
-| 1    | Design system e shells (público/admin), RBAC inicial, Storybook     | Bloqueada parcialmente: aguarda `selecon-portal-v2.html` para fidelidade visual completa |
-| 2    | CMS e portal institucional                                          | Não iniciada                                                                             |
-| 3    | Concursos e página do edital                                        | Não iniciada                                                                             |
-| 4    | Área do candidato e adapters                                        | Não iniciada                                                                             |
-| 5    | Atendimento omnichannel                                             | Não iniciada                                                                             |
+| 0    | Descoberta e fundação (monorepo, tooling, CI, docker-compose, docs) | ✅ Concluída (2026-07-26)                                                                 |
+| 1    | Design system e shell público                                       | ✅ Shell público, tokens e componentes acessíveis entregues (2026-10-05); shell admin, RBAC de UI e Storybook pendentes |
+| 2    | Portal institucional                                                | ✅ Páginas públicas com conteúdo real entregues (2026-10-05); CMS editorial fica na **Central de Serviços** (ver `docs/CENTRAL_DE_SERVICOS.md`) |
+| 3    | Concursos e página do edital                                        | ✅ Catálogo com filtros na URL e página do edital entregues (2026-10-05) sobre dataset migrado; editor, workflow de aprovação e versionamento de documentos ficam na Central |
+| 4    | Área do candidato e adapters                                        | ◐ Experiência unificada com deep links para os sistemas de inscrição (RJ/geral e MT); SSO/API do provedor pendente |
+| 5    | Atendimento omnichannel                                             | ◐ Fale Conosco com protocolo, FAQ e consulta de protocolo via gateway da Central; painel do atendente, Graph/WhatsApp e chatbot pendentes |
 | 6    | Canal de denúncias                                                  | Não iniciada                                                                             |
 | 7    | Anúncios e governança comercial                                     | Não iniciada                                                                             |
 | 8    | Segurança, performance e operação                                   | Não iniciada                                                                             |
@@ -95,7 +95,42 @@ Entregas desta fase:
 - CI configurado (não necessariamente executado em um runner real nesta sessão, mas
   validado localmente com os mesmos comandos).
 
-## Próximos passos após a Fase 0
+## Entrega de 2026-10-05 — Portal público completo (Fases 1–3 + partes das 4 e 5)
+
+Objetivo da sessão: nenhuma página vazia ou sem nexo; todo o conteúdo do site atual migrado;
+home com hero grande de concursos em destaque; área comercial refeita e integrada à Central
+de Serviços; imagens de alta qualidade; links validados.
+
+### O que foi entregue
+
+| Área | Entrega |
+| --- | --- |
+| Design system (`packages/ui`) | Tokens completos (cores, washes, elevação, raio, foco, movimento) e componentes acessíveis: Container, Card, Badge, SectionHeading, Breadcrumbs, Alert, Accordion nativo, campos de formulário com erro associado, Stat, ícones SVG, Button ampliado |
+| Conteúdo (`apps/web/lib/content`) | Modelo público de concurso/notícia/serviço; dataset migrado (22 concursos 2022–2026, 10 notícias, 6 linhas de serviço, dados institucionais, equipe, números oficiais, clientes, reconhecimentos); provider estático com busca tolerante a acentos e sinônimos, filtros, facetas e paginação; provider HTTP da Central |
+| Contratos (`packages/contracts/central`) | Schemas Zod de publicações (`portalContestSchema`, `portalNewsPostSchema`) e de envios (lead comercial, ticket com `contestSlug`, alertas, recibo, consulta de protocolo) |
+| Shell | Cabeçalho com barra de utilidades, submenu nativo, menu mobile com foco preso e `Esc`, logotipo oficial, rodapé completo |
+| Home | Hero grande com concursos em destaque (tabs WAI-ARIA, rotação pausável, respeita `prefers-reduced-motion`), busca com autocompletar, atalhos, inscrições abertas, publicações recentes, alertas por e-mail, jornada do candidato, bloco institucional, comercial, notícias, clientes e reconhecimentos |
+| Concursos | `/concursos` com filtros persistidos na URL (busca, situação, UF, área, escolaridade, tipo, ordenação, página), facetas com contagens, chips removíveis, estado vazio útil; `/concursos/[slug]` com cabeçalho, CTAs, dados-chave, cronograma, cargos, publicações versionadas, FAQ, serviços do candidato, alertas, contato contextualizado, relacionados, JSON-LD |
+| Institucional | `/instituto` (quem somos, trajetória, missão/visão/valores, governança e equipe, estrutura e segurança, compromisso social, base legal, reconhecimentos), `/servicos` e `/servicos/[slug]`, `/transparencia`, `/integridade` (canal de denúncias explicado, encaminhando ao sistema atual), `/imprensa`, `/trabalhe-conosco`, `/privacidade` (LGPD), `/acessibilidade`, `/mapa-do-site`, 404 útil |
+| Notícias | `/noticias` com filtro por categoria e `/noticias/[slug]` com JSON-LD `NewsArticle` e compartilhamento |
+| Comercial (refeito) | `/comercial`: proposta de valor B2G, serviços, etapas de contratação, capacidades, certames de referência e formulário de solicitação de proposta classificado por tipo de projeto → fila Comercial da Central |
+| Atendimento | `/atendimento` (canais, 17 FAQs em 10 grupos, consulta de protocolo honesta, compromissos), `/fale-conosco` (ticket com protocolo, assunto, concurso, canal preferido, sugestão de FAQs) |
+| Candidato | `/candidato`: serviços da seção 9.5 com deep links por sistema (RJ/geral e MT), concursos abertos, FAQ e orientações de segurança |
+| Imagens | Capas vetoriais de alta definição por área (`ContestCover`) + suporte a fotos oficiais via `next/image`; ícones, apple-icon e Open Graph gerados da marca |
+| SEO/segurança | `metadata` por página com canonical, `robots.ts`, `sitemap.ts` dinâmico, 24 redirects 301 do WordPress, cabeçalhos de segurança, `remotePatterns` |
+| Qualidade | Validador de links internos/âncoras (`links:check`), exportador do inventário de migração, 10 testes unitários, capturas em 390/768/1280 sem overflow horizontal |
+
+### O que ficou explicitamente fora (e onde está planejado)
+
+- CMS/editor de concursos, versionamento de documentos com checksum/antivírus, aprovação em duas
+  etapas e agendamento: **Central de Serviços** (contrato em `docs/CENTRAL_DE_SERVICOS.md`).
+- Canal de denúncias próprio e segregado (Fase 6): `/integridade` encaminha ao sistema atual.
+- Painel do atendente, e-mail (Graph), WhatsApp e chatbot (Fase 5).
+- Publicidade e campanhas (Fase 7): sem espaço reservado vazio na home.
+- Área administrativa, autenticação e RBAC de interface (Fases 1/8).
+- Fotos oficiais dos concursos: dependem de carga pela Central (`cover.imageUrl`).
+
+## Próximos passos
 
 1. Solicitar `selecon-portal-v2.html` para destravar fidelidade visual da Fase 1.
 2. Iniciar Fase 1: tokens completos, componentes acessíveis (Radix/shadcn), shells
