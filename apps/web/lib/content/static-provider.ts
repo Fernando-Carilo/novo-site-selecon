@@ -174,16 +174,21 @@ export class StaticContentProvider implements ContentProvider {
   }
 
   async getRecentPublications(limit = 8): Promise<RecentPublication[]> {
+    // "Em ordem de publicação" exige data: documentos sem data confirmada não entram na vitrine.
     const all: RecentPublication[] = this.contests.flatMap((contest) =>
-      contest.publications.map((publication) => ({
-        contestSlug: contest.slug,
-        contestTitle: contest.title,
-        organization: contest.organization.shortName,
-        kind: publication.kind,
-        title: publication.title,
-        publishedAt: publication.publishedAt,
-        url: publication.url,
-      })),
+      contest.publications
+        .filter((publication): publication is typeof publication & { publishedAt: string } =>
+          Boolean(publication.publishedAt),
+        )
+        .map((publication) => ({
+          contestSlug: contest.slug,
+          contestTitle: contest.title,
+          organization: contest.organization.shortName,
+          kind: publication.kind,
+          title: publication.title,
+          publishedAt: publication.publishedAt,
+          url: publication.url,
+        })),
     );
     return all.sort((a, b) => b.publishedAt.localeCompare(a.publishedAt)).slice(0, limit);
   }

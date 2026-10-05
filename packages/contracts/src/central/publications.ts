@@ -65,7 +65,8 @@ export const portalContestPublicationSchema = z.object({
   id: z.string(),
   kind: publicationKindSchema,
   title: z.string(),
-  publishedAt: isoDate,
+  /** Ausente quando a Central não tem a data confirmada do documento (nunca é a data de cadastro). */
+  publishedAt: isoDate.optional(),
   url: z.string().url().optional(),
   current: z.boolean().optional(),
   version: z.number().int().positive().optional(),

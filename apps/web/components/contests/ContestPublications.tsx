@@ -30,7 +30,10 @@ function isPdf(url: string): boolean {
  * cria nova versão; o documento anterior nunca é substituído silenciosamente).
  */
 export function ContestPublications({ publications }: ContestPublicationsProps) {
-  const sorted = [...publications].sort((a, b) => b.publishedAt.localeCompare(a.publishedAt));
+  // Mais recente primeiro; documentos sem data confirmada ficam ao final.
+  const sorted = [...publications].sort((a, b) =>
+    (b.publishedAt ?? "").localeCompare(a.publishedAt ?? ""),
+  );
 
   return (
     <div className="space-y-5">
@@ -77,10 +80,16 @@ export function ContestPublications({ publications }: ContestPublicationsProps) 
                     {publication.title}
                   </p>
                   <p className="text-text-secondary mt-1 text-sm">
-                    Publicado em{" "}
-                    <time dateTime={publication.publishedAt} className="tabular-nums">
-                      {formatDate(publication.publishedAt)}
-                    </time>
+                    {publication.publishedAt ? (
+                      <>
+                        Publicado em{" "}
+                        <time dateTime={publication.publishedAt} className="tabular-nums">
+                          {formatDate(publication.publishedAt)}
+                        </time>
+                      </>
+                    ) : (
+                      "Data de publicação: consulte o documento."
+                    )}
                   </p>
                 </div>
                 {publication.url ? (

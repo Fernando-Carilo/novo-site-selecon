@@ -11,8 +11,9 @@ interface ContestJsonLdProps {
  */
 export function ContestJsonLd({ contest }: ContestJsonLdProps) {
   const pageUrl = `${SITE_URL}/concursos/${contest.slug}`;
-  const firstPublication = [...contest.publications]
+  const firstPublication = contest.publications
     .map((publication) => publication.publishedAt)
+    .filter((date): date is string => Boolean(date))
     .sort()
     .at(0);
 

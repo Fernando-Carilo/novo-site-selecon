@@ -79,8 +79,8 @@ export interface ContestPublication {
   id: string;
   kind: PublicationKind;
   title: string;
-  /** ISO date (YYYY-MM-DD). */
-  publishedAt: string;
+  /** ISO date (YYYY-MM-DD); ausente quando a Central não tem a data confirmada do documento. */
+  publishedAt?: string;
   /** URL do documento (no legado, PDF em selecon.org.br/wp-content; na Central, URL assinada). */
   url?: string;
   /** Indica o documento vigente (regra 9.4: o oficial nunca é substituído silenciosamente). */
