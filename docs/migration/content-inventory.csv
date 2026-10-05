@@ -1,0 +1,46 @@
+tipo,titulo,slug_novo,url_legada,redirect_301,situacao,orgao,uf,publicacoes,documentos_externos,links_servico,atualizado_em,qualidade
+concurso,Guarda Municipal Nível II — Prefeitura de São Gonçalo,/concursos/guarda-municipal-sao-goncalo-2026,https://selecon.org.br/concursos/edital-001-2026-gm-nivel_ii-pmsg-2026/,sim,INSCRICOES_ABERTAS,Prefeitura Municipal de São Gonçalo,RJ,1,1,3,2026-09-28,completo
+concurso,Processo Seletivo Simplificado — Prefeitura de Nova Mutum,/concursos/nova-mutum-pss-2026,,n/a,INSCRICOES_ABERTAS,Prefeitura Municipal de Nova Mutum,MT,1,1,2,2026-09-23,completo
+concurso,CEFET/RJ — Cursos Técnicos Integrados ao Ensino Médio 2027,/concursos/cefet-rj-tecnico-integrado-2027,,n/a,EM_ANDAMENTO,Centro Federal de Educação Tecnológica Celso Suckow da Fonseca — CEFET/RJ,RJ,2,2,2,2026-09-27,completo
+concurso,Câmara Municipal de Cuiabá — Concurso Público 2026,/concursos/camara-municipal-cuiaba-2026,,n/a,PREVISTO,Câmara Municipal de Cuiabá,MT,0,0,0,2026-10-01,completo
+concurso,Polícia Penal de Minas Gerais — Agente de Segurança Penitenciário (SEJUSP/MG),/concursos/sejusp-mg-policia-penal,https://selecon.org.br/concursos/sejuspmg/,sim,EM_ANDAMENTO,Secretaria de Estado de Justiça e Segurança Pública de Minas Gerais,MG,2,2,2,2026-09-21,completo
+concurso,Prefeitura de Chapada dos Guimarães e SAAE — Concurso Público,/concursos/chapada-dos-guimaraes-2026,,n/a,EM_ANDAMENTO,Prefeitura Municipal de Chapada dos Guimarães e Serviço Autônomo de Água e Esgoto,MT,2,2,1,2026-09-28,completo
+concurso,Prefeitura de Cáceres — Agentes Comunitários de Saúde e de Combate às Endemias,/concursos/caceres-saude-2026,,n/a,EM_ANDAMENTO,Prefeitura Municipal de Cáceres — Secretaria Municipal de Saúde,MT,2,2,1,2026-09-20,completo
+concurso,EMGEPRON — Empresa Gerencial de Projetos Navais,/concursos/emgepron-2026,https://selecon.org.br/concursos/edital-no-01-2026-emgepron/,sim,EM_ANDAMENTO,Empresa Gerencial de Projetos Navais — EMGEPRON,RJ,1,1,2,2026-07-01,completo
+concurso,Prefeitura de Araçás — Concurso Público,/concursos/aracas-ba-2026,https://selecon.org.br/concursos/edital-001-2026-pmba/,sim,EM_ANDAMENTO,Prefeitura Municipal de Araçás,BA,1,1,2,2026-09-01,completo
+concurso,Guarda Civil Municipal de Niterói — Concurso Público,/concursos/guarda-civil-municipal-niteroi,https://selecon.org.br/concursos/concurso-guarda-civil-municipal-de-niteroi-rj/,sim,EM_ANDAMENTO,Prefeitura Municipal de Niterói — Secretaria de Ordem Pública,RJ,1,1,2,2026-03-01,completo
+concurso,Prefeitura de Barra do Garças — Concurso Público,/concursos/barra-do-garcas-2025,https://selecon.org.br/concursos/edital-01-2025-pmbg/,sim,HOMOLOGADO,Prefeitura Municipal de Barra do Garças,MT,2,2,1,2026-03-10,completo
+concurso,Instituto de Obras de Niterói (ION/EMUSA) — Processo Seletivo,/concursos/ion-niteroi-2025,https://selecon.org.br/concursos/edital-01-2025-ion-emusa/,sim,HOMOLOGADO,Instituto de Obras de Niterói — ION (antiga EMUSA),RJ,1,1,1,2025-09-30,completo
+concurso,CIDES-VRC — Consórcio Intermunicipal do Vale do Rio Cuiabá,/concursos/cides-vrc-2025,https://selecon.org.br/concursos/edital-001-2025-cides/,sim,HOMOLOGADO,Consórcio Intermunicipal de Desenvolvimento Econômico e Social do Vale do Rio Cuiabá,MT,1,1,1,2025-08-15,completo
+concurso,SECITECI/MT — Professores e Técnicos da Educação Profissional,/concursos/seciteci-mt-2025,https://selecon.org.br/concursos/edital-12-2025-seciteci-mt/,sim,HOMOLOGADO,"Secretaria de Estado de Ciência, Tecnologia e Inovação de Mato Grosso",MT,1,1,1,2025-11-20,completo
+concurso,Prefeitura de Tapurah — Concurso Público,/concursos/tapurah-2025,https://selecon.org.br/concursos/edital-01-2025-tapurah/,sim,ENCERRADO,Prefeitura Municipal de Tapurah,MT,1,1,1,2025-11-05,parcial — complementar na Central
+concurso,Prefeitura de Nobres — Processo Seletivo,/concursos/nobres-2025,https://selecon.org.br/concursos/edital-01-2025-nobres/,sim,ENCERRADO,Prefeitura Municipal de Nobres,MT,1,1,1,2025-10-01,parcial — complementar na Central
+concurso,SEDUC/MT — Processo Seletivo Simplificado (Apoio à Educação Especial),/concursos/seduc-mt-apoio-educacao-especial-2025,https://selecon.org.br/concursos/edital-008-2025-gs-seduc-mt/,sim,ENCERRADO,Secretaria de Estado de Educação de Mato Grosso,MT,1,1,1,2025-10-15,parcial — complementar na Central
+concurso,Secretaria Municipal de Educação de Cuiabá — Processo Seletivo,/concursos/sme-cuiaba-05-2025,https://selecon.org.br/concursos/edital-no-05-2025-gs-sme-cad/,sim,ENCERRADO,Prefeitura de Cuiabá — Secretaria Municipal de Educação,MT,1,1,1,2025-08-01,parcial — complementar na Central
+concurso,CEFET/RJ — Cursos Técnicos Subsequentes 2025,/concursos/cefet-rj-subsequente-2025,https://selecon.org.br/concursos/edital-04-2025-cefet-subs-2025/,sim,ENCERRADO,Centro Federal de Educação Tecnológica Celso Suckow da Fonseca — CEFET/RJ,RJ,2,2,1,2025-07-15,parcial — complementar na Central
+concurso,Prefeitura de Barra do Bugres — Agentes de Saúde e de Endemias,/concursos/barra-do-bugres-saude-2025,,n/a,ENCERRADO,Prefeitura Municipal de Barra do Bugres,MT,1,1,1,2025-07-10,parcial — complementar na Central
+concurso,"Prefeitura de Boa Vista — Concurso Público (Administração, Controladoria, Educação e Saúde)",/concursos/boa-vista-rr-pmbv-002,https://selecon.org.br/concursos/edital-002-pmbv/,sim,ENCERRADO,Prefeitura Municipal de Boa Vista,RR,1,1,1,2024-06-01,parcial — complementar na Central
+concurso,Guarda Municipal de São Luís — Concurso Público,/concursos/guarda-municipal-sao-luis-2022,https://selecon.org.br/concursos/001-2022-gmma/,sim,ENCERRADO,Prefeitura Municipal de São Luís — Guarda Municipal,MA,1,1,1,2023-06-01,parcial — complementar na Central
+concurso,IFRJ — Técnico-Administrativos em Educação,/concursos/ifrj-tae-2022,https://selecon.org.br/concursos/ifrj-tae-2022/,sim,ENCERRADO,"Instituto Federal de Educação, Ciência e Tecnologia do Rio de Janeiro — IFRJ",RJ,1,1,1,2023-01-15,parcial — complementar na Central
+noticia,Instituto Selecon é definido como banca do concurso da Câmara Municipal de Cuiabá,/noticias/selecon-e-a-banca-do-concurso-da-camara-de-cuiaba-2026,,n/a,CONCURSOS,,,0,0,1,2026-10-01,completo
+noticia,Guarda Municipal de São Gonçalo: inscrições abertas para 100 vagas e 500 de cadastro de reserva,/noticias/abertas-inscricoes-guarda-municipal-sao-goncalo-2026,,n/a,CONCURSOS,,,0,0,1,2026-09-28,completo
+noticia,"Nova Mutum abre processo seletivo com 85 vagas e salários de até R$ 22,6 mil",/noticias/nova-mutum-abre-processo-seletivo-com-85-vagas,,n/a,CONCURSOS,,,0,0,1,2026-09-21,completo
+noticia,SEJUSP/MG: divulgado o resultado preliminar da Prova de Condicionamento Físico,/noticias/sejusp-mg-resultado-preliminar-prova-condicionamento-fisico,,n/a,RESULTADOS,,,0,0,1,2026-09-21,completo
+noticia,Chapada dos Guimarães: provas objetivas são aplicadas para 147 oportunidades,/noticias/chapada-dos-guimaraes-provas-objetivas-aplicadas,,n/a,CONCURSOS,,,0,0,1,2026-09-28,completo
+noticia,CEFET/RJ oferece 1.024 vagas em cursos técnicos integrados ao ensino médio para 2027,/noticias/cefet-rj-1024-vagas-cursos-tecnicos-integrados-2027,,n/a,CONCURSOS,,,0,0,1,2026-09-08,completo
+noticia,Cáceres abre processo seletivo público para agentes comunitários de saúde e de combate às endemias,/noticias/caceres-abre-selecao-para-agentes-de-saude-e-endemias,,n/a,CONCURSOS,,,0,0,1,2026-08-01,completo
+noticia,Prefeitura de Araçás (BA) lança concurso com 92 vagas em 54 cargos,/noticias/aracas-ba-lanca-concurso-com-92-vagas,,n/a,CONCURSOS,,,0,0,1,2026-05-28,completo
+noticia,"Instituto Selecon ultrapassa 1,8 milhão de candidatos inscritos em seus certames",/noticias/instituto-selecon-ultrapassa-1-8-milhao-de-inscritos,,n/a,INSTITUCIONAL,,,0,0,0,2026-07-15,completo
+noticia,"EMGEPRON abre inscrições para concurso com 14 vagas e salários de até R$ 12.302,00",/noticias/emgepron-inscricoes-abertas-14-vagas,,n/a,CONCURSOS,,,0,0,1,2026-01-19,completo
+servico,Concursos públicos,/servicos/concursos-publicos,,n/a,publicado,,,0,0,0,2026-10-05,completo
+servico,Processos seletivos e seleções simplificadas,/servicos/processos-seletivos,,n/a,publicado,,,0,0,0,2026-10-05,completo
+servico,Seleções escolares e vestibulares,/servicos/selecoes-escolares-e-vestibulares,,n/a,publicado,,,0,0,0,2026-10-05,completo
+servico,Capacitação e cursos de formação,/servicos/capacitacao-e-cursos-de-formacao,,n/a,publicado,,,0,0,0,2026-10-05,completo
+servico,Pesquisas e avaliações institucionais,/servicos/pesquisas-e-avaliacoes,,n/a,publicado,,,0,0,0,2026-10-05,completo
+servico,Tecnologia e segurança do certame,/servicos/tecnologia-e-seguranca,,n/a,publicado,,,0,0,0,2026-10-05,completo
+pagina,/a-instituicao,/instituto,https://selecon.org.br/a-instituicao/,sim,migrado,,,0,0,0,2026-10-05,completo
+pagina,/apresentacao,/instituto,https://selecon.org.br/apresentacao/,sim,migrado,,,0,0,0,2026-10-05,completo
+pagina,/objetivo,/instituto,https://selecon.org.br/objetivo/,sim,migrado,,,0,0,0,2026-10-05,completo
+pagina,/contato,/comercial,https://selecon.org.br/contato/,sim,migrado,,,0,0,0,2026-10-05,completo
+pagina,/fale-conosco-2,/fale-conosco,https://selecon.org.br/fale-conosco-2/,sim,migrado,,,0,0,0,2026-10-05,completo
+pagina,/denuncias,/integridade,https://selecon.org.br/denuncias/,sim,migrado,,,0,0,0,2026-10-05,completo

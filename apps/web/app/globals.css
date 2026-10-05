@@ -4,8 +4,62 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --font-family-base: var(--font-inter), "Inter", "Public Sans", system-ui, -apple-system, sans-serif;
+}
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 5rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
 body {
   background-color: var(--color-background-light);
   color: var(--color-text-primary);
   font-family: var(--font-family-base);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Foco visível universal (WCAG 2.4.7) — nunca remova. */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
+}
+
+/* Prosa de páginas institucionais e notícias. */
+.prose-selecon > * + * {
+  margin-top: 1rem;
+}
+.prose-selecon p {
+  line-height: 1.75;
+}
+.prose-selecon h2 {
+  margin-top: 2.5rem;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--color-navy-primary);
+}
+.prose-selecon h3 {
+  margin-top: 2rem;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--color-navy-primary);
+}
+.prose-selecon ul {
+  list-style: disc;
+  padding-left: 1.5rem;
+}
+.prose-selecon li + li {
+  margin-top: 0.375rem;
+}
+.prose-selecon a {
+  color: var(--color-action-blue);
+  text-decoration: underline;
+  text-underline-offset: 4px;
 }

@@ -80,7 +80,16 @@ conforme regra 3.12 e seção 21.8 do prompt mestre.
 9. desligamento controlado dos legados;
 10. retenção de backup e plano de recuperação.
 
-## 7. Status atual
+## 7. Status atual (atualizado em 2026-10-05)
 
-Nenhuma etapa de migração foi iniciada. Esta fase depende de acesso autorizado aos sistemas
-de origem, que não foi fornecido nesta sessão.
+| Etapa | Status |
+| --- | --- |
+| Inventário de conteúdo (`docs/migration/content-inventory.csv`) | ✅ gerado a partir do dataset migrado (`pnpm --filter @selecon/web inventory`) — 22 concursos, 10 notícias, 6 serviços, 5 páginas institucionais |
+| Mapa de redirects 301 (`apps/web/redirects.mjs`) | ✅ 24 regras (páginas institucionais + slugs de concursos do WordPress) |
+| Link checker (`pnpm --filter @selecon/web links:check`) | ✅ varre sitemap, links internos e âncoras; externos com `--external` |
+| Export oficial do WordPress (posts, mídia, PDFs) | ⏳ depende de acesso autorizado; os PDFs continuam servidos pelo site atual até a importação |
+| Importação para a Central de Serviços | ⏳ contrato pronto (`docs/CENTRAL_DE_SERVICOS.md`); carga a executar pela equipe da Central |
+| Atendimento e denúncias | ⏳ sem alteração — ver seções 4 e 5 |
+
+Cutover do conteúdo institucional e do catálogo (etapas 1–3 da seção 6) está tecnicamente
+pronto: o portal serve todas as páginas públicas com conteúdo real e redireciona as URLs antigas.

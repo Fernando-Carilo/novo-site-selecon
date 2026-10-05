@@ -64,3 +64,47 @@ provisionamento.
 
 Todos os dados de seed (concursos, usuários, tickets, denúncias, campanhas) serão fictícios,
 claramente identificados como demo, sem qualquer semelhança com pessoas ou casos reais.
+
+## 8. Conteúdo migrado do site atual sem acesso direto ao WordPress (sessão de 2026-10-05)
+
+O ambiente desta sessão não tinha saída de rede para `selecon.org.br`, `concursos.selecon.org.br`,
+`selecon.selecao.net.br` nem para arquivos (Wayback). O conteúdo foi reconstruído a partir de:
+
+- resultados de busca pública (títulos, URLs e resumos das páginas de concurso, 2025–2026);
+- a apresentação institucional oficial do Instituto (Google Drive do Instituto): missão, visão,
+  valores, estrutura, equipe de direção/coordenação, números de inscritos por certame e
+  reconhecimentos;
+- o logotipo oficial (arquivo de marca 1280×640) do Drive.
+
+**Premissa:** o dataset em `apps/web/lib/content/data/` é a **carga inicial** e deve ser revisado
+pela equipe antes do go-live — em especial datas previstas de etapas futuras (marcadas como
+"previsão" na interface) e o status de certames em fase final. A Central de Serviços passa a ser a
+fonte de verdade assim que `CONTENT_SOURCE=central` for ativado (ver `docs/CENTRAL_DE_SERVICOS.md`).
+Nenhum dado pessoal foi copiado; contatos são apenas os institucionais públicos (PABX, e-mails
+`faleconosco@`/`comercial@`, endereço da sede, Instagram e Facebook oficiais).
+
+## 9. Imagens de concursos
+
+Não havia acesso a fotos oficiais nesta sessão. O portal usa **capas vetoriais** (`ContestCover`,
+SVG nítido em qualquer densidade) por área temática, sempre com nome do órgão, UF e nome da área
+escritos. O modelo já prevê `cover.imageUrl`/`imageAlt` para fotos em alta resolução servidas pela
+Central (≥ 1600 px), com `next/image` e `remotePatterns` configurados.
+
+## 10. Publicidade e campanhas
+
+Nenhuma campanha patrocinada existe ainda (Fase 7). A home **não** reserva espaço vazio para
+anúncios: o bloco correspondente da seção 9.2 será adicionado quando houver inventário aprovado,
+sempre identificado como "Publicidade".
+
+## 11. Canal de denúncias e atendimento legados
+
+O canal de denúncias próprio e segregado é da Fase 6; a página `/integridade` explica o canal e
+encaminha para `denuncias.selecon.org.br`. A consulta de protocolo do Fale Conosco responde de
+forma honesta no modo mock e orienta ao sistema atual (`atendimento.selecon.org.br`) para
+protocolos antigos.
+
+## 12. Equipe institucional
+
+Nomes e cargos da direção e coordenação exibidos em `/instituto` vêm da apresentação institucional
+(material de divulgação do Instituto). Contatos pessoais (celulares, e-mails nominais, registros
+profissionais) **não** foram publicados. Confirmar com a diretoria a lista a manter no ar.

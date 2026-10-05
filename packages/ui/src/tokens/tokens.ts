@@ -7,18 +7,30 @@ export const colorTokens = {
   navyPrimary: "#071B3D",
   navySecondary: "#0B2D60",
   actionBlue: "#0B66D4",
+  actionBlueHover: "#0957B4",
   supportCyan: "#23B5E8",
   institutionalRed: "#D52B3F",
   successGreen: "#12805C",
+  warningAmber: "#B45309",
   backgroundLight: "#F3F7FB",
   surface: "#FFFFFF",
+  surfaceMuted: "#F8FAFD",
   textPrimary: "#14233D",
   textSecondary: "#61708A",
+  textOnDark: "#FFFFFF",
   border: "#DCE6F2",
+  borderStrong: "#C3D2E4",
+  washBlue: "#E8F1FD",
+  washCyan: "#E3F6FC",
+  washGreen: "#E6F5EF",
+  washAmber: "#FDF3E7",
+  washRed: "#FDEBEE",
+  washNeutral: "#EEF2F7",
 } as const;
 
 export const typographyTokens = {
-  fontFamily: '"Inter", "Public Sans", system-ui, -apple-system, sans-serif',
+  fontFamily: '"Inter", "Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif',
+  /** 14px é o piso para texto corrido; 12px apenas para rótulos curtos em caixa alta. */
   scale: {
     xs: "0.75rem",
     sm: "0.875rem",
@@ -28,6 +40,7 @@ export const typographyTokens = {
     "2xl": "1.5rem",
     "3xl": "1.875rem",
     "4xl": "2.25rem",
+    "5xl": "3rem",
   },
 } as const;
 
@@ -43,12 +56,14 @@ export const spacingTokens = {
   10: "2.5rem",
   12: "3rem",
   16: "4rem",
+  20: "5rem",
 } as const;
 
 export const radiusTokens = {
   sm: "0.25rem",
   md: "0.5rem",
   lg: "0.75rem",
+  xl: "1rem",
   full: "9999px",
 } as const;
 

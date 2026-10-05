@@ -52,9 +52,24 @@ pnpm test
 pnpm build
 ```
 
+## Scripts do portal (`apps/web`)
+
+```bash
+pnpm --filter @selecon/web dev            # servidor de desenvolvimento
+pnpm --filter @selecon/web test           # testes do provider de conteúdo e formatadores
+pnpm --filter @selecon/web inventory      # regenera docs/migration/content-inventory.csv
+pnpm --filter @selecon/web links:check    # valida links internos/âncoras (com o servidor no ar)
+```
+
 ## Status do projeto
 
-Este repositório está na **Fase 0 (fundação)**. Nenhuma integração externa real
-(Microsoft Graph, WhatsApp Cloud API, sistema do candidato) está habilitada — todas usam
-implementações mock documentadas em `docs/INTEGRATIONS.md`. Nenhuma infraestrutura AWS foi
-provisionada. Detalhes completos em `docs/IMPLEMENTATION_PLAN.md` e `docs/ASSUMPTIONS.md`.
+**Portal público (Fase 2 + páginas de concursos da Fase 3) entregue com conteúdo real** migrado do
+site atual: home, catálogo e página do edital, institucional, serviços, notícias, transparência,
+integridade, atendimento/Fale Conosco, área do candidato e área comercial. Publicações, notícias e
+filas de atendimento/comercial são integradas à **Central de Serviços Selecon** por contrato
+(`docs/CENTRAL_DE_SERVICOS.md`), com dataset estático como carga inicial.
+
+Nenhuma integração externa real (Microsoft Graph, WhatsApp Cloud API, sistema do candidato,
+Central de Serviços) foi exercitada contra ambiente real — todas usam adapters com mock documentado.
+Nenhuma infraestrutura AWS foi provisionada. Detalhes em `docs/IMPLEMENTATION_PLAN.md` e
+`docs/ASSUMPTIONS.md`.
