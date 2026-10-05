@@ -154,10 +154,16 @@ export class StaticContentProvider implements ContentProvider {
   }
 
   async getFeaturedContests(limit = 5): Promise<Contest[]> {
-    return sortContests(
-      this.contests.filter((c) => c.featured),
+    // Ordem definida na Central (homeOrder) vem primeiro; sem ordem, relevância.
+    const featured = this.contests.filter((c) => c.featured);
+    const ordered = featured
+      .filter((c) => c.homeOrder != null)
+      .sort((a, b) => a.homeOrder! - b.homeOrder!);
+    const rest = sortContests(
+      featured.filter((c) => c.homeOrder == null),
       "relevancia",
-    ).slice(0, limit);
+    );
+    return [...ordered, ...rest].slice(0, limit);
   }
 
   async getOpenContests(limit = 6): Promise<Contest[]> {
@@ -183,7 +189,10 @@ export class StaticContentProvider implements ContentProvider {
   }
 
   async listNews(limit?: number) {
-    const sorted = [...this.news].sort((a, b) => b.publishedAt.localeCompare(a.publishedAt));
+    const sorted = [...this.news].sort(
+      (a, b) =>
+        (a.homeOrder ?? 9999) - (b.homeOrder ?? 9999) || b.publishedAt.localeCompare(a.publishedAt),
+    );
     return limit ? sorted.slice(0, limit) : sorted;
   }
 

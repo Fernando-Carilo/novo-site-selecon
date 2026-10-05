@@ -164,7 +164,37 @@ export interface Contest {
   /** Contagem oficial de inscritos quando divulgada. */
   registeredCandidates?: number;
   updatedAt: string;
+  /** Aditivos da Central: ordem na home, SEO, vídeo, tags e seções da página (nulo = padrão). */
+  homeOrder?: number;
+  seo?: { title?: string; description?: string };
+  videoUrl?: string;
+  tags?: string[];
+  pageSections?: { key: PageSectionKey; enabled: boolean; order: number }[];
 }
+
+export type PageSectionKey =
+  | "resumo"
+  | "numeros"
+  | "video"
+  | "cronograma"
+  | "cargos"
+  | "publicacoes"
+  | "perguntas"
+  | "contato"
+  | "relacionados";
+export const DEFAULT_PAGE_SECTIONS: { key: PageSectionKey; enabled: boolean; order: number }[] = (
+  [
+    "resumo",
+    "numeros",
+    "video",
+    "cronograma",
+    "cargos",
+    "publicacoes",
+    "perguntas",
+    "contato",
+    "relacionados",
+  ] as PageSectionKey[]
+).map((key, order) => ({ key, enabled: true, order }));
 
 export interface NewsPost {
   slug: string;
@@ -178,6 +208,11 @@ export interface NewsPost {
   /** Imagem de capa em alta resolução (quando fornecida pela Central). */
   imageUrl?: string;
   imageAlt?: string;
+  /** Aditivos da Central (05/10). */
+  homeOrder?: number;
+  tags?: string[];
+  readingMinutes?: number;
+  imageCredit?: string;
 }
 
 export interface ServiceLine {

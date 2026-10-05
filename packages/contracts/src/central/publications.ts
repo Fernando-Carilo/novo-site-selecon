@@ -48,6 +48,19 @@ export const publicationKindSchema = z.enum([
 
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Data no formato YYYY-MM-DD");
 
+export const pageSectionKeySchema = z.enum([
+  "resumo",
+  "numeros",
+  "video",
+  "cronograma",
+  "cargos",
+  "publicacoes",
+  "perguntas",
+  "contato",
+  "relacionados",
+]);
+export type PageSectionKey = z.infer<typeof pageSectionKeySchema>;
+
 export const portalContestPublicationSchema = z.object({
   id: z.string(),
   kind: publicationKindSchema,
@@ -135,6 +148,14 @@ export const portalContestSchema = z.object({
   featured: z.boolean().optional(),
   registeredCandidates: z.number().int().nonnegative().optional(),
   updatedAt: isoDate,
+  // Aditivos (Central, 05/10): vitrine da home, SEO, vídeo, tags e seções da página
+  homeOrder: z.number().int().optional(),
+  seo: z.object({ title: z.string().optional(), description: z.string().optional() }).optional(),
+  videoUrl: z.string().url().optional(),
+  tags: z.array(z.string()).optional(),
+  pageSections: z
+    .array(z.object({ key: pageSectionKeySchema, enabled: z.boolean(), order: z.number().int() }))
+    .optional(),
 });
 export type PortalContest = z.infer<typeof portalContestSchema>;
 
@@ -149,6 +170,11 @@ export const portalNewsPostSchema = z.object({
   author: z.string(),
   imageUrl: z.string().url().optional(),
   imageAlt: z.string().optional(),
+  // Aditivos (Central, 05/10)
+  homeOrder: z.number().int().optional(),
+  tags: z.array(z.string()).optional(),
+  readingMinutes: z.number().int().optional(),
+  imageCredit: z.string().optional(),
 });
 export type PortalNewsPost = z.infer<typeof portalNewsPostSchema>;
 

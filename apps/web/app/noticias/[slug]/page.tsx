@@ -125,6 +125,12 @@ export default async function NewsArticlePage({ params }: NewsArticlePageProps) 
           <span>
             Por <span className="text-text-primary font-medium">{post.author}</span>
           </span>
+          {post.readingMinutes ? (
+            <>
+              <span aria-hidden="true">·</span>
+              <span>{post.readingMinutes} min de leitura</span>
+            </>
+          ) : null}
         </p>
       </PageHeader>
 
@@ -144,9 +150,12 @@ export default async function NewsArticlePage({ params }: NewsArticlePageProps) 
                   className="h-auto w-full"
                   sizes="(min-width: 1024px) 48rem, 100vw"
                 />
-                {post.imageAlt ? (
+                {post.imageAlt || post.imageCredit ? (
                   <figcaption className="text-text-secondary px-4 py-2 text-sm">
                     {post.imageAlt}
+                    {post.imageCredit ? (
+                      <span className="block text-xs">Crédito: {post.imageCredit}</span>
+                    ) : null}
                   </figcaption>
                 ) : null}
               </figure>
@@ -215,6 +224,18 @@ export default async function NewsArticlePage({ params }: NewsArticlePageProps) 
                 <span className="text-text-primary break-all font-medium">{absoluteUrl}</span>
               </p>
             </section>
+            {post.tags && post.tags.length > 0 ? (
+              <ul className="mt-8 flex flex-wrap gap-2" aria-label="Tags">
+                {post.tags.map((tag) => (
+                  <li
+                    key={tag}
+                    className="border-border text-text-secondary rounded-full border px-3 py-1 text-xs font-semibold"
+                  >
+                    {tag}
+                  </li>
+                ))}
+              </ul>
+            ) : null}
           </article>
 
           <aside className="lg:sticky lg:top-24 lg:self-start" aria-labelledby="mais-title">

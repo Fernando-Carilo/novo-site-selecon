@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import type { ReactNode } from "react";
+import { Fragment, type ReactNode } from "react";
+import { DEFAULT_PAGE_SECTIONS, type PageSectionKey } from "@/lib/content";
 import {
   Accordion,
   Alert,
@@ -45,15 +46,15 @@ export async function generateMetadata({ params }: ContestPageProps): Promise<Me
   }
   const path = `/concursos/${contest.slug}`;
   return {
-    title: contest.title,
-    description: contest.summary,
+    title: contest.seo?.title ?? contest.title,
+    description: contest.seo?.description ?? contest.summary,
     alternates: { canonical: path },
     openGraph: {
       type: "article",
       locale: "pt_BR",
       siteName: "Instituto Selecon",
-      title: contest.title,
-      description: contest.summary,
+      title: contest.seo?.title ?? contest.title,
+      description: contest.seo?.description ?? contest.summary,
       url: path,
       modifiedTime: contest.updatedAt,
       images: contest.cover.imageUrl
@@ -89,14 +90,27 @@ function BreadcrumbLink({
 const NAVY_OUTLINE_BUTTON =
   "inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-white/40 px-4 py-2 text-sm font-semibold text-white transition-colors duration-base hover:bg-white/10 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-support-cyan focus-visible:ring-offset-2 focus-visible:ring-offset-navy-primary";
 
-const PAGE_SECTIONS = [
-  { id: "resumo", label: "Resumo" },
-  { id: "cronograma", label: "Cronograma" },
-  { id: "cargos", label: "Cargos e requisitos" },
-  { id: "publicacoes", label: "Publicações" },
-  { id: "perguntas", label: "Perguntas frequentes" },
-  { id: "contato", label: "Atendimento" },
-] as const;
+/** Rótulos da navegação "Nesta página" (só seções da coluna principal). */
+const NAV_LABELS = {
+  resumo: "Resumo",
+  video: "Vídeo",
+  cronograma: "Cronograma",
+  cargos: "Cargos e requisitos",
+  publicacoes: "Publicações",
+  perguntas: "Perguntas frequentes",
+  contato: "Atendimento",
+} as const;
+
+/** URL de incorporação de vídeo (YouTube/Vimeo); outras origens voltam como link. */
+function videoEmbedUrl(url: string): string | null {
+  const yt = /(?:youtube\.com\/(?:watch\?v=|shorts\/|embed\/)|youtu\.be\/)([A-Za-z0-9_-]{6,})/.exec(
+    url,
+  );
+  if (yt) return `https://www.youtube-nocookie.com/embed/${yt[1]}`;
+  const vm = /vimeo\.com\/(?:video\/)?(\d+)/.exec(url);
+  if (vm) return `https://player.vimeo.com/video/${vm[1]}`;
+  return null;
+}
 
 /** Perguntas gerais do candidato, usadas quando o certame ainda não tem FAQ própria. */
 const DEFAULT_FAQS = [
@@ -228,6 +242,14 @@ export default async function ContestPage({ params }: ContestPageProps) {
   const deadline = registrationDeadlineLabel(contest);
   const keyFacts = buildKeyFacts(contest);
 
+  const sections = [...(contest.pageSections ?? DEFAULT_PAGE_SECTIONS)]
+    .filter((s) => s.enabled)
+    .sort((a, b) => a.order - b.order);
+  const on = (key: PageSectionKey) => sections.some((s) => s.key === key);
+  const navItems = sections
+    .filter((s) => s.key in NAV_LABELS && (s.key !== "video" || Boolean(contest.videoUrl)))
+    .map((s) => ({ id: s.key, label: NAV_LABELS[s.key as keyof typeof NAV_LABELS] }));
+
   const faqItems: AccordionItem[] = (contest.faqs.length > 0 ? contest.faqs : DEFAULT_FAQS).map(
     (faq, index) => ({
       id: `pergunta-${index + 1}`,
@@ -235,6 +257,171 @@ export default async function ContestPage({ params }: ContestPageProps) {
       content: <p>{faq.answer}</p>,
     }),
   );
+
+  const sectionBlocks: Partial<Record<PageSectionKey, ReactNode>> = {
+    resumo: (
+      <section id="resumo" aria-labelledby="resumo-title" className="scroll-mt-24">
+        <SectionTitle id="resumo-title">Resumo</SectionTitle>
+        <p className="text-text-primary mt-4 text-base leading-relaxed">{contest.summary}</p>
+        {contest.highlights.length > 0 ? (
+          <ul className="mt-5 flex flex-wrap gap-2" aria-label="Destaques do concurso">
+            {contest.highlights.map((highlight) => (
+              <li
+                key={highlight}
+                className="bg-wash-blue text-navy-primary inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-semibold"
+              >
+                <Icon name="check" size={14} className="text-action-blue" />
+                {highlight}
+              </li>
+            ))}
+          </ul>
+        ) : null}
+        {contest.tags && contest.tags.length > 0 ? (
+          <ul className="mt-4 flex flex-wrap gap-2" aria-label="Tags">
+            {contest.tags.map((tag) => (
+              <li
+                key={tag}
+                className="border-border text-text-secondary rounded-full border px-3 py-1 text-xs font-semibold"
+              >
+                {tag}
+              </li>
+            ))}
+          </ul>
+        ) : null}
+      </section>
+    ),
+    video: contest.videoUrl ? (
+      <section id="video" aria-labelledby="video-title" className="scroll-mt-24">
+        <SectionTitle id="video-title">Vídeo de apresentação</SectionTitle>
+        {videoEmbedUrl(contest.videoUrl!) ? (
+          <div className="border-border mt-6 aspect-video overflow-hidden rounded-lg border bg-black">
+            <iframe
+              src={videoEmbedUrl(contest.videoUrl!)!}
+              title={`Vídeo de apresentação — ${contest.title}`}
+              loading="lazy"
+              allow="accelerometer; encrypted-media; picture-in-picture"
+              allowFullScreen
+              className="h-full w-full"
+            />
+          </div>
+        ) : (
+          <a
+            href={contest.videoUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={buttonClassNames("secondary", "mt-6")}
+          >
+            Assistir ao vídeo
+            <Icon name="external-link" size={16} label="abre em nova aba" />
+          </a>
+        )}
+      </section>
+    ) : null,
+    cronograma: (
+      <section id="cronograma" aria-labelledby="cronograma-title" className="scroll-mt-24">
+        <SectionTitle id="cronograma-title">Cronograma</SectionTitle>
+        <p className="text-text-secondary mt-2 text-sm">
+          Etapas conforme o edital e os comunicados publicados. Datas previstas podem ser alteradas
+          por retificação — confira sempre o documento vigente.
+        </p>
+        <div className="mt-6">
+          <ContestTimeline timeline={contest.timeline} />
+        </div>
+      </section>
+    ),
+    cargos: (
+      <section id="cargos" aria-labelledby="cargos-title" className="scroll-mt-24">
+        <SectionTitle id="cargos-title">Cargos e requisitos</SectionTitle>
+        <p className="text-text-secondary mt-2 text-sm">
+          Distribuição de vagas por cargo. Requisitos completos, atribuições e critérios de reserva
+          constam no edital de abertura.
+        </p>
+        <div className="mt-6">
+          <ContestPositions positions={contest.positions} editalNumber={contest.editalNumber} />
+        </div>
+      </section>
+    ),
+    publicacoes: (
+      <section id="publicacoes" aria-labelledby="publicacoes-title" className="scroll-mt-24">
+        <SectionTitle id="publicacoes-title">Publicações oficiais</SectionTitle>
+        <p className="text-text-secondary mt-2 text-sm">
+          Editais, retificações, comunicados, gabaritos, convocações e resultados, do mais recente
+          ao mais antigo.
+        </p>
+        <div className="mt-6">
+          <ContestPublications publications={contest.publications} />
+        </div>
+      </section>
+    ),
+    perguntas: (
+      <section id="perguntas" aria-labelledby="perguntas-title" className="scroll-mt-24">
+        <SectionTitle id="perguntas-title">Perguntas frequentes</SectionTitle>
+        <p className="text-text-secondary mt-2 text-sm">
+          {contest.faqs.length > 0
+            ? "Respostas específicas deste concurso. Em caso de divergência, prevalece o edital."
+            : "Este concurso ainda não tem perguntas específicas publicadas. As respostas abaixo valem para os certames do Instituto; em caso de divergência, prevalece o edital."}
+        </p>
+        <div className="mt-6">
+          <Accordion items={faqItems} />
+        </div>
+        <p className="text-text-secondary mt-4 text-sm">
+          Não encontrou sua dúvida?{" "}
+          <Link
+            href="/atendimento#perguntas-frequentes"
+            className="text-action-blue font-semibold underline underline-offset-4"
+          >
+            Veja as perguntas frequentes gerais
+          </Link>{" "}
+          ou fale com a equipe na seção de atendimento abaixo.
+        </p>
+      </section>
+    ),
+    contato: (
+      <section id="contato" aria-labelledby="contato-title" className="scroll-mt-24">
+        <SectionTitle id="contato-title">Atendimento sobre este concurso</SectionTitle>
+        <Card className="mt-6 grid gap-6 sm:grid-cols-2">
+          <div>
+            <h3 className="text-navy-primary text-base font-bold">Fale Conosco com protocolo</h3>
+            <p className="text-text-secondary mt-2 text-sm leading-relaxed">
+              Abra uma solicitação já vinculada a este concurso. Você recebe um número de protocolo
+              para acompanhar a resposta. Informe o edital:{" "}
+              <span className="text-text-primary font-semibold">{contest.editalNumber}</span>.
+            </p>
+            <Link
+              href={`/fale-conosco?concurso=${encodeURIComponent(contest.slug)}`}
+              className={buttonClassNames("primary", "mt-4")}
+            >
+              <Icon name="message-circle" size={18} />
+              Abrir solicitação
+            </Link>
+          </div>
+          <div>
+            <h3 className="text-navy-primary text-base font-bold">Telefone e horário</h3>
+            <p className="text-text-secondary mt-2 text-sm leading-relaxed">
+              <a
+                href={INSTITUTION.phoneHref}
+                className="text-action-blue font-semibold underline underline-offset-4"
+              >
+                {INSTITUTION.phone}
+              </a>
+              <br />
+              {INSTITUTION.businessHours}
+            </p>
+            <p className="text-text-secondary mt-3 text-sm leading-relaxed">
+              Dúvidas comuns sobre inscrição, boleto e recursos estão nas{" "}
+              <Link
+                href="/atendimento#perguntas-frequentes"
+                className="text-action-blue font-semibold underline underline-offset-4"
+              >
+                perguntas frequentes
+              </Link>
+              .
+            </p>
+          </div>
+        </Card>
+      </section>
+    ),
+  };
 
   return (
     <>
@@ -349,7 +536,7 @@ export default async function ContestPage({ params }: ContestPageProps) {
       </section>
 
       {/* Dados-chave */}
-      {keyFacts.length > 0 ? (
+      {on("numeros") && keyFacts.length > 0 ? (
         <section aria-label="Dados-chave do concurso" className="border-border bg-surface border-b">
           <Container className="py-6">
             <dl className="grid grid-cols-2 gap-x-6 gap-y-5 sm:grid-cols-3 lg:grid-cols-4">
@@ -399,7 +586,7 @@ export default async function ContestPage({ params }: ContestPageProps) {
                 Nesta página
               </p>
               <ul className="mt-1 flex flex-wrap gap-x-5 gap-y-1">
-                {PAGE_SECTIONS.map((section) => (
+                {navItems.map((section) => (
                   <li key={section.id}>
                     <a
                       href={`#${section.id}`}
@@ -412,127 +599,9 @@ export default async function ContestPage({ params }: ContestPageProps) {
               </ul>
             </nav>
 
-            <section id="resumo" aria-labelledby="resumo-title" className="scroll-mt-24">
-              <SectionTitle id="resumo-title">Resumo</SectionTitle>
-              <p className="text-text-primary mt-4 text-base leading-relaxed">{contest.summary}</p>
-              {contest.highlights.length > 0 ? (
-                <ul className="mt-5 flex flex-wrap gap-2" aria-label="Destaques do concurso">
-                  {contest.highlights.map((highlight) => (
-                    <li
-                      key={highlight}
-                      className="bg-wash-blue text-navy-primary inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-semibold"
-                    >
-                      <Icon name="check" size={14} className="text-action-blue" />
-                      {highlight}
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
-            </section>
-
-            <section id="cronograma" aria-labelledby="cronograma-title" className="scroll-mt-24">
-              <SectionTitle id="cronograma-title">Cronograma</SectionTitle>
-              <p className="text-text-secondary mt-2 text-sm">
-                Etapas conforme o edital e os comunicados publicados. Datas previstas podem ser
-                alteradas por retificação — confira sempre o documento vigente.
-              </p>
-              <div className="mt-6">
-                <ContestTimeline timeline={contest.timeline} />
-              </div>
-            </section>
-
-            <section id="cargos" aria-labelledby="cargos-title" className="scroll-mt-24">
-              <SectionTitle id="cargos-title">Cargos e requisitos</SectionTitle>
-              <p className="text-text-secondary mt-2 text-sm">
-                Distribuição de vagas por cargo. Requisitos completos, atribuições e critérios de
-                reserva constam no edital de abertura.
-              </p>
-              <div className="mt-6">
-                <ContestPositions
-                  positions={contest.positions}
-                  editalNumber={contest.editalNumber}
-                />
-              </div>
-            </section>
-
-            <section id="publicacoes" aria-labelledby="publicacoes-title" className="scroll-mt-24">
-              <SectionTitle id="publicacoes-title">Publicações oficiais</SectionTitle>
-              <p className="text-text-secondary mt-2 text-sm">
-                Editais, retificações, comunicados, gabaritos, convocações e resultados, do mais
-                recente ao mais antigo.
-              </p>
-              <div className="mt-6">
-                <ContestPublications publications={contest.publications} />
-              </div>
-            </section>
-
-            <section id="perguntas" aria-labelledby="perguntas-title" className="scroll-mt-24">
-              <SectionTitle id="perguntas-title">Perguntas frequentes</SectionTitle>
-              <p className="text-text-secondary mt-2 text-sm">
-                {contest.faqs.length > 0
-                  ? "Respostas específicas deste concurso. Em caso de divergência, prevalece o edital."
-                  : "Este concurso ainda não tem perguntas específicas publicadas. As respostas abaixo valem para os certames do Instituto; em caso de divergência, prevalece o edital."}
-              </p>
-              <div className="mt-6">
-                <Accordion items={faqItems} />
-              </div>
-              <p className="text-text-secondary mt-4 text-sm">
-                Não encontrou sua dúvida?{" "}
-                <Link
-                  href="/atendimento#perguntas-frequentes"
-                  className="text-action-blue font-semibold underline underline-offset-4"
-                >
-                  Veja as perguntas frequentes gerais
-                </Link>{" "}
-                ou fale com a equipe na seção de atendimento abaixo.
-              </p>
-            </section>
-
-            <section id="contato" aria-labelledby="contato-title" className="scroll-mt-24">
-              <SectionTitle id="contato-title">Atendimento sobre este concurso</SectionTitle>
-              <Card className="mt-6 grid gap-6 sm:grid-cols-2">
-                <div>
-                  <h3 className="text-navy-primary text-base font-bold">
-                    Fale Conosco com protocolo
-                  </h3>
-                  <p className="text-text-secondary mt-2 text-sm leading-relaxed">
-                    Abra uma solicitação já vinculada a este concurso. Você recebe um número de
-                    protocolo para acompanhar a resposta. Informe o edital:{" "}
-                    <span className="text-text-primary font-semibold">{contest.editalNumber}</span>.
-                  </p>
-                  <Link
-                    href={`/fale-conosco?concurso=${encodeURIComponent(contest.slug)}`}
-                    className={buttonClassNames("primary", "mt-4")}
-                  >
-                    <Icon name="message-circle" size={18} />
-                    Abrir solicitação
-                  </Link>
-                </div>
-                <div>
-                  <h3 className="text-navy-primary text-base font-bold">Telefone e horário</h3>
-                  <p className="text-text-secondary mt-2 text-sm leading-relaxed">
-                    <a
-                      href={INSTITUTION.phoneHref}
-                      className="text-action-blue font-semibold underline underline-offset-4"
-                    >
-                      {INSTITUTION.phone}
-                    </a>
-                    <br />
-                    {INSTITUTION.businessHours}
-                  </p>
-                  <p className="text-text-secondary mt-3 text-sm leading-relaxed">
-                    Dúvidas comuns sobre inscrição, boleto e recursos estão nas{" "}
-                    <Link
-                      href="/atendimento#perguntas-frequentes"
-                      className="text-action-blue font-semibold underline underline-offset-4"
-                    >
-                      perguntas frequentes
-                    </Link>
-                    .
-                  </p>
-                </div>
-              </Card>
-            </section>
+            {sections.map((section) => (
+              <Fragment key={section.key}>{sectionBlocks[section.key] ?? null}</Fragment>
+            ))}
           </div>
 
           {/* Sidebar */}
@@ -614,7 +683,7 @@ export default async function ContestPage({ params }: ContestPageProps) {
       </Container>
 
       {/* Concursos relacionados */}
-      {related.length > 0 ? (
+      {on("relacionados") && related.length > 0 ? (
         <section className="bg-surface py-14" aria-labelledby="relacionados-title">
           <Container>
             <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
