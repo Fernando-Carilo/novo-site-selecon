@@ -10,7 +10,6 @@ import {
   type IconName,
 } from "@selecon/ui";
 import { PageHeader } from "@/components/PageHeader";
-import { INSTITUTION } from "@/lib/content/data/institution";
 
 export const metadata: Metadata = {
   title: "Integridade — canal de denúncias",
@@ -18,8 +17,6 @@ export const metadata: Metadata = {
     "Canal de denúncias do Instituto Selecon: sigiloso, com opção de anonimato, protocolo e código de acesso. Saiba o que relatar, como funciona o acompanhamento e quando procurar as autoridades.",
   alternates: { canonical: "/integridade" },
 };
-
-const WHISTLEBLOWING_URL = INSTITUTION.legacySystems.whistleblowing;
 
 const REPORTABLE: { title: string; description: string; icon: IconName }[] = [
   {
@@ -86,25 +83,20 @@ const HOW_IT_WORKS = [
   },
 ];
 
-function ExternalCta({
+function Cta({
   href,
   children,
   variant,
 }: {
   href: string;
   children: string;
-  variant: "primary" | "secondary";
+  variant: "primary" | "secondary" | "cyan" | "inverse";
 }) {
   return (
-    <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      className={buttonClassNames(variant, "", "lg")}
-    >
+    <Link href={href} className={buttonClassNames(variant, "", "lg")}>
       {children}
-      <Icon name="external-link" size={16} label="abre em nova aba" />
-    </a>
+      <Icon name="arrow-right" size={16} />
+    </Link>
   );
 }
 
@@ -119,18 +111,17 @@ export default function IntegrityPage() {
         tone="navy"
         actions={
           <>
-            <ExternalCta href={WHISTLEBLOWING_URL} variant="primary">
+            <Cta href="/denuncias/nova" variant="cyan">
               Registrar denúncia
-            </ExternalCta>
-            <ExternalCta href={WHISTLEBLOWING_URL} variant="secondary">
+            </Cta>
+            <Cta href="/denuncias/consultar" variant="inverse">
               Acompanhar denúncia
-            </ExternalCta>
+            </Cta>
           </>
         }
       >
         <p className="text-sm text-white/80">
-          Os dois botões abrem o sistema de denúncias do Instituto em uma nova aba, em endereço
-          próprio (denuncias.selecon.org.br).
+          O registro e a consulta acontecem neste portal, em ambiente separado do atendimento comum.
         </p>
       </PageHeader>
 
@@ -271,9 +262,9 @@ export default function IntegrityPage() {
                   Sigilo e segregação
                 </h3>
                 <p className="text-text-primary mt-2 text-sm leading-relaxed">
-                  O canal funciona em sistema próprio, separado do Fale Conosco e dos sistemas de
-                  inscrição. Não há publicidade, rastreadores nem ferramentas de análise de
-                  audiência nas páginas de denúncia. O conteúdo é acessível apenas à equipe
+                  O canal é separado do Fale Conosco e dos sistemas de inscrição, com dados e
+                  permissões próprios. Não há publicidade, rastreadores nem ferramentas de análise
+                  de audiência nas páginas de denúncia. O conteúdo é acessível apenas à equipe
                   designada para a apuração.
                 </p>
               </Card>
@@ -335,35 +326,17 @@ export default function IntegrityPage() {
                 Registrar ou acompanhar um relato
               </h2>
               <p className="mt-2 max-w-2xl text-sm leading-relaxed text-white/80">
-                O registro e o acompanhamento são feitos no sistema de denúncias do Instituto, em
-                endereço próprio. Os links abrem em nova aba. O canal integrado a este portal, com
-                formulário em etapas e comprovante em PDF, será disponibilizado em fase futura — até
-                lá, o sistema atual segue em operação normal.
+                O registro e o acompanhamento são feitos aqui mesmo, com formulário em etapas,
+                protocolo e código de acesso. A identificação é opcional.
               </p>
               <div className="mt-5 flex flex-wrap gap-3">
-                <a
-                  href={WHISTLEBLOWING_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={buttonClassNames("cyan", "", "lg")}
-                >
+                <Cta href="/denuncias/nova" variant="cyan">
                   Registrar denúncia
-                  <Icon name="external-link" size={16} label="abre em nova aba" />
-                </a>
-                <a
-                  href={WHISTLEBLOWING_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={buttonClassNames("inverse", "", "lg")}
-                >
+                </Cta>
+                <Cta href="/denuncias/consultar" variant="inverse">
                   Acompanhar denúncia
-                  <Icon name="external-link" size={16} label="abre em nova aba" />
-                </a>
+                </Cta>
               </div>
-              <p className="mt-4 text-sm text-white/70">
-                Endereço do sistema:{" "}
-                <span className="font-medium text-white">{WHISTLEBLOWING_URL}</span>
-              </p>
             </div>
           </section>
         </div>

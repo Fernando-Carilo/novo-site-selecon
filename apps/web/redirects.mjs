@@ -99,5 +99,4 @@ export const legacyRedirects = [
   },
   { source: "/concursos/ifrj-tae-2022", destination: "/concursos/ifrj-tae-2022", permanent: true },
   // Rotas internas antigas do protótipo
-  { source: "/denuncias", destination: "/integridade", permanent: true },
 ];

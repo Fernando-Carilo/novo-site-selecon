@@ -1,11 +1,27 @@
-# Integração com a Central de Serviços Selecon
+# Integração com a Selecon Central
 
-> Status: **contrato definido e implementado no portal; endpoint da Central ainda não exercitado
-> contra ambiente real** (regra 3.10 — nenhuma integração é declarada operacional sem teste real).
+> Status: **contrato implementado nos dois lados.** A Selecon Central (repositório
+> `Fernando-Carilo/atendimento-selecon`, backend Express + Prisma em
+> `atendimento.selecon.org.br`, futuro `central.selecon.org.br`) expõe exatamente este contrato em
+> `/api/v1/portal/*` (`backend/src/routes/portal.ts` e `backend/src/lib/portal-contract.ts`). O portal
+> é um consumidor: renderiza o que a Central publica e envia para ela o que o cidadão/órgão preenche.
+> Verificado ponta a ponta no ambiente de homologação em 05/10/2026 (ver `docs/HOMOLOGACAO_2026-10-05.md` na Central).
 
-A Central de Serviços Selecon (em desenvolvimento, AWS) passa a ser a **fonte de verdade** de
-publicações de concursos, notícias e das filas de atendimento/comercial. O portal público é um
-consumidor: renderiza o que a Central publica e envia para ela o que o cidadão/órgão preenche.
+A "Central de Serviços" citada no prompt mestre é a Selecon Central: um único painel para atendimento,
+site público, canal de denúncias e comercial. Na Central:
+
+- **Concursos** vivem em *Certames* e ganham presença no portal em *Site público → Concursos no site*
+  (visível, destaque, endereço, resumo e o perfil completo: tipo, área, esfera, edital, vagas, salários,
+  cargos, links de serviço, capa). Cronograma = marcos do certame; publicações = documentos; FAQ = base de
+  conhecimento marcada para o site.
+- **Notícias** vivem em *Site público → Publicações* (rascunho → publicada, com expiração), inclusive as
+  importadas do WordPress e as geradas a partir do certame.
+- **Propostas comerciais** chegam em *Comercial → Propostas* (protocolo `COM-…`).
+- **Fale Conosco** vira uma conversa em *Atendimento → Conversas* (protocolo `ATD-…`); a consulta de
+  protocolo lê a mesma conversa.
+- **Alertas de editais** ficam em `alert_subscriptions`, com confirmação por e-mail (double opt-in).
+- **Denúncias** usam as páginas `/denuncias/*` deste portal, que chamam `/api/public/denuncias/*` da
+  Central pelo proxy `app/api/central/[...path]` (ver ADR-0003: domínio segregado por permissão).
 
 ## 1. Fronteira e responsabilidades
 
@@ -25,8 +41,8 @@ consumidor: renderiza o que a Central publica e envia para ela o que o cidadão/
 | Variável                              | Valor                          | Efeito                                                            |
 | ------------------------------------- | ------------------------------ | ----------------------------------------------------------------- |
 | `CONTENT_SOURCE`                      | `static` (padrão) \| `central` | origem de concursos e notícias                                    |
-| `CENTRAL_SERVICOS_API_URL`            | `https://.../api`              | base URL (obrigatória em `central`)                               |
-| `CENTRAL_SERVICOS_API_TOKEN`          | segredo                        | Bearer token de leitura/escrita do portal (Secrets Manager)       |
+| `CENTRAL_SERVICOS_API_URL`            | `https://atendimento.selecon.org.br/api` | base URL (obrigatória em `central`); local: `http://localhost:4100` |
+| `CENTRAL_SERVICOS_API_TOKEN`          | segredo                        | Opcional. Se a Central tiver `PORTAL_API_TOKEN`, precisa ser igual |
 | `CENTRAL_SERVICOS_REVALIDATE_SECONDS` | `300`                          | ISR das leituras                                                  |
 | `SUBMISSIONS_MODE`                    | `mock` \| `central`            | destino dos formulários; em produção `mock` precisa ser explícito |
 | `NEXT_IMAGE_EXTRA_HOST`               | host da CDN                    | libera imagens remotas da Central                                 |
