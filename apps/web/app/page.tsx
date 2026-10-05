@@ -13,6 +13,7 @@ import { ContestCard } from "@/components/contests/ContestCard";
 import { AlertsForm } from "@/components/home/AlertsForm";
 import { ContestSearchForm } from "@/components/home/ContestSearchForm";
 import { FeaturedHero } from "@/components/home/FeaturedHero";
+import { HomeBanners, fetchBanners } from "@/components/home/HomeBanners";
 import { getContentProvider } from "@/lib/content";
 import { CAPABILITIES, CLIENTS, KEY_NUMBERS, RECOGNITIONS } from "@/lib/content/data/institution";
 import { PUBLICATION_KIND_LABEL } from "@/lib/content/labels";
@@ -102,13 +103,16 @@ const JOURNEY: { step: string; title: string; description: string; icon: IconNam
 
 export default async function HomePage() {
   const content = getContentProvider();
-  const [featured, open, catalog, publications, news] = await Promise.all([
-    content.getFeaturedContests(5),
-    content.getOpenContests(3),
-    content.listContests({ status: "TODOS" }),
-    content.getRecentPublications(6),
-    content.listNews(3),
-  ]);
+  const [featured, open, catalog, publications, news, heroBanners, stripBanners] =
+    await Promise.all([
+      content.getFeaturedContests(5),
+      content.getOpenContests(3),
+      content.listContests({ status: "TODOS" }),
+      content.getRecentPublications(6),
+      content.listNews(3),
+      fetchBanners("HOME_HERO"),
+      fetchBanners("HOME_FAIXA"),
+    ]);
 
   const suggestions = Array.from(
     new Set(
@@ -153,6 +157,9 @@ export default async function HomePage() {
           </div>
         </Container>
       </section>
+
+      {/* 1b. Banners da home (governados na Central) */}
+      <HomeBanners banners={heroBanners} label="Destaques e campanhas" />
 
       {/* 2. Atalhos principais */}
       <section className="-mt-6 pb-4" aria-label="Atalhos principais">
@@ -476,6 +483,8 @@ export default async function HomePage() {
           </ul>
         </Container>
       </section>
+      {/* Faixa de campanhas (posição HOME_FAIXA na Central) */}
+      <HomeBanners banners={stripBanners} label="Campanhas" />
     </>
   );
 }
